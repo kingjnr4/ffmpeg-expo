@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "expo-ffmpeg-example",
+    "slug": "expo-ffmpeg-example",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "expo-ffmpeg-example",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.expoffmpeg"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.example.expoffmpeg"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "ffmpeg-expo",
+        {
+          "enableDecoders": ["h264", "hevc", "aac", "mp3", "vp8", "vp9"],
+          "enableEncoders": ["aac", "libx264"]
+        }
+      ]
+    ]
+  }
+}

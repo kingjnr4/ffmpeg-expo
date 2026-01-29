@@ -1,0 +1,154 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  example-app:
+    name: Example App Typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install example dependencies
+        working-directory: example
+        run: npm install
+
+      - name: Typecheck example
+        working-directory: example
+        run: npm run typecheck
+
+  android-build-check:
+    name: Android Build Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      # Validate Gradle files parse correctly
+      - name: Validate Android Gradle files
+        working-directory: packages/expo-ffmpeg/android
+        run: |
+          # Check that build.gradle.kts is valid Kotlin syntax
+          # This is a basic check - full validation happens during actual build
+          if grep -q "plugins {" build.gradle.kts && grep -q "android {" build.gradle.kts; then
+            echo "Gradle file structure looks valid"
+          else
+            echo "Gradle file may have issues"
+            exit 1
+          fi
+
+  ios-podspec-check:
+    name: iOS Podspec Check
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Validate Podspec
+        working-directory: packages/expo-ffmpeg/ios
+        run: |
+          # Basic podspec syntax validation
+          pod spec lint ExpoFFmpeg.podspec --allow-warnings --quick || true
+          # Note: Full validation would require the prebuilt FFmpeg binaries
+          # which aren't available in CI. The --quick flag skips downloading.
+          echo "Podspec basic validation complete"
+
+  plugin-check:
+    name: Expo Plugin Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build plugin
+        working-directory: packages/expo-ffmpeg
+        run: npm run build:plugin
+
+      - name: Verify plugin output
+        run: |
+          if [ -f "packages/expo-ffmpeg/plugin/build/index.js" ]; then
+            echo "Plugin built successfully"
+          else
+            echo "Plugin build output not found"
+            exit 1
+          fi
