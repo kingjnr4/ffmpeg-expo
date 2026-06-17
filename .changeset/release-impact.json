@@ -1,6 +1,6 @@
 {
   "exemptLabels": ["no-changeset-required"],
-  "versionPackagesBranch": "changesets/version-packages",
+  "versionPackagesBranch": "changeset-release/main",
   "relevant": [
     {
       "paths": ["packages/expo-ffmpeg/package.json"],
