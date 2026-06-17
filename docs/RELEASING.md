@@ -46,12 +46,12 @@ Stable package releases are automatic after the generated `Version Packages` PR 
 The `.github/workflows/release.yml` workflow runs on pushes to `main`:
 
 1. Validates the repository.
-2. If pending Changesets exist, runs `changeset version` and creates or updates one `Version Packages` PR.
-3. If no pending Changesets exist, checks whether the current `ffmpeg-expo` version is already on npm.
-4. Publishes `packages/expo-ffmpeg` only when the version is absent from npm.
-5. Creates the `v<version>` GitHub Release only after npm publication succeeds.
+2. If pending Changesets exist, `changesets/action` runs `changeset version` and creates or updates one `Version Packages` PR.
+3. If no pending Changesets exist, `changesets/action` runs the publish command.
+4. The publish command validates the package contents and publishes unpublished package versions to npm.
+5. `changesets/action` creates the corresponding GitHub releases after publication.
 
-The workflow is safe to rerun. It checks npm, tag, and GitHub Release state before publishing or creating releases.
+The workflow is safe to rerun because `changeset publish` publishes only package versions that are not already present on npm.
 
 ## npm Trusted Publishing Setup
 
@@ -106,7 +106,7 @@ That package change should include a Changeset if it affects users.
 
 Changesets writes package release notes to `packages/expo-ffmpeg/CHANGELOG.md` in the `Version Packages` PR.
 
-Maintainers can edit that changelog section in the `Version Packages` PR to add migration notes, compatibility warnings, or release introductions. The GitHub Release body is created from the committed changelog section after npm publish succeeds.
+Maintainers can edit that changelog section in the `Version Packages` PR to add migration notes, compatibility warnings, or release introductions. GitHub releases are created by `changesets/action` after npm publication succeeds.
 
 ## Branch Protection Recommendations
 
@@ -147,10 +147,10 @@ git branch -d dev
 9. Merging a normal pull request: does not publish a stable release.
 10. Creation or update of the Version Packages PR: happens on `main` when pending Changesets exist.
 11. Merging the Version Packages PR: publishes prepared package versions automatically if the npm version is unpublished.
-12. Successful npm publication: creates the matching `v<version>` GitHub Release after npm succeeds.
+12. Successful npm publication: `changesets/action` creates the package GitHub release after npm succeeds.
 13. Failed npm publication: no package GitHub Release is created.
-14. Accidental workflow reruns: npm, tag, and release state are checked to avoid duplicate publishes or releases.
+14. Accidental workflow reruns: `changeset publish` skips already-published versions.
 15. Adding another public package later: remove it from Changesets ignore rules if needed and use safe non-conflicting tags such as `package-name@version` for multiple public packages.
 16. Adding another private package later: keep it private and ignored unless it contributes to `ffmpeg-expo` output.
-17. Transitioning from one package to multiple packages: switch from `v<version>` tags to package-qualified tags before publishing the second public package.
+17. Transitioning from one package to multiple packages: keep using Changesets package releases; package-qualified release tags avoid conflicts.
 18. Transitioning from multiple public packages to one assembled public package: keep internal packages private and target Changesets only at the assembled public package.

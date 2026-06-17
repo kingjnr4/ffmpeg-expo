@@ -12,6 +12,7 @@
     "test": "turbo run test",
     "changeset": "changeset",
     "version-packages": "changeset version",
+    "publish-packages": "npm run pack:check && changeset publish",
     "pack:check": "npm run pack:check --workspace ffmpeg-expo",
     "clean": "turbo run clean && rm -rf node_modules"
   },
