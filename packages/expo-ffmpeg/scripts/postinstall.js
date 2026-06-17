@@ -11,7 +11,13 @@ const https = require('https');
 const { execSync } = require('child_process');
 
 // Configuration
-const BINARY_VERSION = 'v0.0.3';
+const packageJson = require('../package.json');
+const BINARY_VERSION = packageJson.ffmpegExpo?.binaryReleaseTag;
+
+if (!BINARY_VERSION) {
+  throw new Error('Missing ffmpegExpo.binaryReleaseTag in package.json');
+}
+
 const BASE_URL = `https://github.com/kingjnr4/ffmpeg-expo/releases/download/${BINARY_VERSION}`;
 
 const PACKAGE_DIR = path.resolve(__dirname, '..');

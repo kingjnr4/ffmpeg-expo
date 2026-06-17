@@ -1,0 +1,187 @@
+name: FFmpeg Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      ffmpeg_version:
+        description: FFmpeg source version to build
+        required: true
+        default: 6.1.1
+      binary_release_tag:
+        description: GitHub Release tag for these binary assets, for example ffmpeg-6.1.1-r1
+        required: true
+        default: ffmpeg-6.1.1-r1
+      prerelease:
+        description: Mark the binary release as prerelease
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: ffmpeg-binaries-${{ inputs.binary_release_tag }}
+  cancel-in-progress: false
+
+env:
+  FFMPEG_VERSION: ${{ inputs.ffmpeg_version }}
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    name: Build Android binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y yasm nasm
+
+      - name: Set up JDK
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+        with:
+          java-version: '17'
+          distribution: temurin
+
+      - name: Set up Android NDK
+        uses: nttld/setup-ndk@ed92fe6cadad69be94a966a7ee3271275e62f779
+        id: setup-ndk
+        with:
+          ndk-version: r26b
+          add-to-path: true
+
+      - name: Download FFmpeg source
+        run: |
+          curl -fsSLO "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
+          tar xjf "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
+          rm "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
+
+      - name: Build FFmpeg for Android
+        run: |
+          cd "ffmpeg-${FFMPEG_VERSION}"
+          ../packages/ffmpeg-build/android/build-ffmpeg.sh || (cat ffbuild/config.log && exit 1)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          OUTPUT_DIR: ${{ github.workspace }}/output/android
+
+      - name: Package Android artifacts
+        run: |
+          mkdir -p jniLibs
+          for arch in arm64-v8a armeabi-v7a x86_64; do
+            mkdir -p "jniLibs/${arch}"
+            cp output/android/${arch}/lib/*.so "jniLibs/${arch}/"
+          done
+          tar -czvf ffmpeg-android.tar.gz -C jniLibs .
+          sha256sum ffmpeg-android.tar.gz > android-checksums.txt
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: android-binaries
+          path: |
+            ffmpeg-android.tar.gz
+            android-checksums.txt
+
+  build-ios:
+    name: Build iOS binaries
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Install build dependencies
+        run: brew install yasm nasm
+
+      - name: Select Xcode 15.2 when available
+        run: |
+          if [ -d /Applications/Xcode_15.2.app ]; then
+            sudo xcode-select -s /Applications/Xcode_15.2.app
+          fi
+
+      - name: Download FFmpeg source
+        run: |
+          curl -fsSLO "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
+          tar xjf "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
+          rm "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
+
+      - name: Build FFmpeg for iOS
+        run: |
+          cd "ffmpeg-${FFMPEG_VERSION}"
+          ../packages/ffmpeg-build/ios/build-ffmpeg.sh || (cat ffbuild/config.log && exit 1)
+        env:
+          OUTPUT_DIR: ${{ github.workspace }}/output/ios
+
+      - name: Package iOS artifacts
+        run: |
+          cd output/ios
+          zip -r ../../ffmpeg-ios.zip FFmpeg.xcframework
+          cd ../..
+          shasum -a 256 ffmpeg-ios.zip > ios-checksums.txt
+
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ios-binaries
+          path: |
+            ffmpeg-ios.zip
+            ios-checksums.txt
+
+  publish-binary-release:
+    name: Publish binary GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-android, build-ios]
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+
+      - name: Prepare release files and notes
+        run: |
+          printf '# SHA256 Checksums\n\n## Android\n' > checksums.txt
+          cat android-binaries/android-checksums.txt >> checksums.txt
+          printf '\n## iOS\n' >> checksums.txt
+          cat ios-binaries/ios-checksums.txt >> checksums.txt
+
+          cat > release-notes.md <<EOF
+          FFmpeg ${FFMPEG_VERSION} binaries for ffmpeg-expo.
+
+          Attachments:
+          - ffmpeg-android.tar.gz
+          - ffmpeg-ios.zip
+          - checksums.txt
+
+          To make the npm package consume these assets, update packages/expo-ffmpeg/package.json:
+
+          \`\`\`json
+          "ffmpegExpo": {
+            "binaryReleaseTag": "${{ inputs.binary_release_tag }}"
+          }
+          \`\`\`
+          EOF
+
+      - name: Create or update binary release
+        run: |
+          TAG='${{ inputs.binary_release_tag }}'
+          TITLE="FFmpeg ${FFMPEG_VERSION} binaries"
+          ASSETS=(
+            android-binaries/ffmpeg-android.tar.gz
+            ios-binaries/ffmpeg-ios.zip
+            checksums.txt
+          )
+
+          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" "${ASSETS[@]}" --repo "${GITHUB_REPOSITORY}" --clobber
+            gh release edit "${TAG}" --repo "${GITHUB_REPOSITORY}" --title "${TITLE}" --notes-file release-notes.md
+          else
+            PRERELEASE_ARGS=()
+            if [ '${{ inputs.prerelease }}' = 'true' ]; then
+              PRERELEASE_ARGS+=(--prerelease)
+            fi
+            gh release create "${TAG}" "${ASSETS[@]}" --repo "${GITHUB_REPOSITORY}" --target "${GITHUB_SHA}" --title "${TITLE}" --notes-file release-notes.md "${PRERELEASE_ARGS[@]}"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
