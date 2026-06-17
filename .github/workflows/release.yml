@@ -2,251 +2,169 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
 
 env:
-  FFMPEG_VERSION: "6.1.1"
-  NODE_VERSION: "20"
+  NODE_VERSION: '20'
+  SKIP_FFMPEG_DOWNLOAD: '1'
+
+permissions:
+  contents: read
 
 jobs:
-  # Build FFmpeg binaries for Android
-  build-android:
+  validate:
+    name: Validate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y yasm nasm
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Set up Android NDK
-        uses: nttld/setup-ndk@v1
-        id: setup-ndk
-        with:
-          ndk-version: r26b
-          add-to-path: true
-
-      - name: Cache FFmpeg source
-        uses: actions/cache@v4
-        with:
-          path: ffmpeg-${{ env.FFMPEG_VERSION }}
-          key: ffmpeg-source-${{ env.FFMPEG_VERSION }}-v3
-
-      - name: Download FFmpeg source
-        run: |
-          if [ ! -d "ffmpeg-$FFMPEG_VERSION" ]; then
-            wget -q https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.bz2
-            tar xjf ffmpeg-$FFMPEG_VERSION.tar.bz2
-            rm ffmpeg-$FFMPEG_VERSION.tar.bz2
-          fi
-
-      - name: Clean FFmpeg source
-        run: |
-          cd ffmpeg-$FFMPEG_VERSION
-          make distclean 2>/dev/null || true
-
-      - name: Build FFmpeg for Android
-        run: |
-          cd ffmpeg-$FFMPEG_VERSION
-          ../packages/ffmpeg-build/android/build-ffmpeg.sh || (cat ffbuild/config.log && exit 1)
-        env:
-          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-          OUTPUT_DIR: ${{ github.workspace }}/output/android
-
-      - name: Package Android artifacts
-        run: |
-          # Restructure for Android jniLibs format: arch/*.so
-          mkdir -p jniLibs
-          for arch in arm64-v8a armeabi-v7a x86_64; do
-            mkdir -p jniLibs/$arch
-            cp output/android/$arch/lib/*.so jniLibs/$arch/
-          done
-          # Create tar from the jniLibs structure
-          tar -czvf ffmpeg-android.tar.gz -C jniLibs .
-          sha256sum ffmpeg-android.tar.gz > android-checksums.txt
-
-      - name: Upload Android artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-binaries
-          path: |
-            ffmpeg-android.tar.gz
-            android-checksums.txt
-
-  # Build FFmpeg binaries for iOS
-  build-ios:
-    runs-on: macos-14
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install build dependencies
-        run: |
-          brew install yasm nasm
-
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_15.2.app
-
-      - name: Cache FFmpeg source
-        uses: actions/cache@v4
-        with:
-          path: ffmpeg-${{ env.FFMPEG_VERSION }}
-          key: ffmpeg-source-${{ env.FFMPEG_VERSION }}-macos-v3
-
-      - name: Download FFmpeg source
-        run: |
-          if [ ! -d "ffmpeg-$FFMPEG_VERSION" ]; then
-            wget -q https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.bz2
-            tar xjf ffmpeg-$FFMPEG_VERSION.tar.bz2
-            rm ffmpeg-$FFMPEG_VERSION.tar.bz2
-          fi
-
-      - name: Clean FFmpeg source
-        run: |
-          cd ffmpeg-$FFMPEG_VERSION
-          make distclean 2>/dev/null || true
-
-      - name: Build FFmpeg for iOS
-        run: |
-          cd ffmpeg-$FFMPEG_VERSION
-          ../packages/ffmpeg-build/ios/build-ffmpeg.sh || (cat ffbuild/config.log && exit 1)
-        env:
-          OUTPUT_DIR: ${{ github.workspace }}/output/ios
-
-      - name: Package iOS artifacts
-        run: |
-          cd output/ios
-          zip -r ../../ffmpeg-ios.zip FFmpeg.xcframework
-          cd ../..
-          shasum -a 256 ffmpeg-ios.zip > ios-checksums.txt
-
-      - name: Upload iOS artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-binaries
-          path: |
-            ffmpeg-ios.zip
-            ios-checksums.txt
-
-  # Run tests
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
-        env:
-          SKIP_FFMPEG_DOWNLOAD: "1"
+        run: npm ci
 
-      - name: Build TypeScript
+      - name: Build packages
         run: npm run build
 
-      - name: Type check
+      - name: Typecheck
         run: npm run typecheck
 
-  # Create GitHub Release
-  release:
-    needs: [build-android, build-ios, test]
+      - name: Validate npm package contents
+        run: npm run pack:check
+
+  version-packages:
+    name: Version Packages PR
     runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      pending: ${{ steps.pending.outputs.pending }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Check pending Changesets
+        id: pending
+        run: node scripts/pending-changesets.js
+
+      - name: Setup Node.js
+        if: steps.pending.outputs.pending == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.pending.outputs.pending == 'true'
+        run: npm ci
+
+      - name: Version packages
+        if: steps.pending.outputs.pending == 'true'
+        run: npm run version-packages
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Refresh lockfile
+        if: steps.pending.outputs.pending == 'true'
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Create or update Version Packages PR
+        if: steps.pending.outputs.pending == 'true'
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676
+        with:
+          token: ${{ github.token }}
+          branch: changesets/version-packages
+          title: Version Packages
+          commit-message: Version Packages
+          body: |
+            This PR was generated by Changesets.
+
+            Merging it publishes the prepared package versions from `main` after validation succeeds.
+          labels: release
+          delete-branch: true
+
+  publish-npm:
+    name: Publish npm
+    runs-on: ubuntu-latest
+    needs: [validate, version-packages]
+    if: needs.version-packages.outputs.pending == 'false'
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      version: ${{ steps.state-after.outputs.version }}
+      tag: ${{ steps.state-after.outputs.tag }}
+      should_create_release: ${{ steps.state-after.outputs.should_create_release }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: https://registry.npmjs.org
+
+      - name: Check npm and release state
+        id: state-before
+        run: node scripts/npm-release-state.js
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Install dependencies
+        if: steps.state-before.outputs.should_publish == 'true'
+        run: npm ci
+
+      - name: Build packages
+        if: steps.state-before.outputs.should_publish == 'true'
+        run: npm run build
+
+      - name: Typecheck
+        if: steps.state-before.outputs.should_publish == 'true'
+        run: npm run typecheck
+
+      - name: Validate npm package contents
+        if: steps.state-before.outputs.should_publish == 'true'
+        run: npm run pack:check
+
+      - name: Publish ffmpeg-expo to npm
+        if: steps.state-before.outputs.should_publish == 'true'
+        working-directory: packages/expo-ffmpeg
+        run: npm publish --provenance --access public
+
+      - name: Re-check npm and release state
+        id: state-after
+        run: node scripts/npm-release-state.js
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: publish-npm
+    if: needs.publish-npm.outputs.should_create_release == 'true'
     permissions:
       contents: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-
-      - name: Prepare checksums
-        run: |
-          echo "# SHA256 Checksums" > checksums.txt
-          echo "" >> checksums.txt
-          echo "## Android" >> checksums.txt
-          cat android-binaries/android-checksums.txt >> checksums.txt
-          echo "" >> checksums.txt
-          echo "## iOS" >> checksums.txt
-          cat ios-binaries/ios-checksums.txt >> checksums.txt
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            android-binaries/ffmpeg-android.tar.gz
-            ios-binaries/ffmpeg-ios.zip
-            checksums.txt
-          body: |
-            ## ffmpeg-expo ${{ github.ref_name }}
-
-            FFmpeg ${{ env.FFMPEG_VERSION }} binaries for Expo/React Native.
-
-            ### Installation
-
-            ```bash
-            npm install ffmpeg-expo
-            ```
-
-            Binaries are automatically downloaded during installation.
-
-            ### Checksums
-
-            See `checksums.txt` attached to this release.
-
-            ### Supported Architectures
-
-            **Android:**
-            - arm64-v8a
-            - armeabi-v7a
-            - x86_64
-
-            **iOS:**
-            - arm64 (device)
-            - arm64 + x86_64 (simulator)
-
-  # Publish to npm
-  publish-npm:
-    needs: [release]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install dependencies
-        run: npm install
+      - name: Create package GitHub Release
+        run: node scripts/create-package-release.js
         env:
-          SKIP_FFMPEG_DOWNLOAD: "1"
-
-      - name: Build
-        run: npm run build
-
-      - name: Update binary version in postinstall
-        run: |
-          sed -i "s|BINARY_VERSION=.*|BINARY_VERSION='${{ github.ref_name }}'|" packages/expo-ffmpeg/scripts/postinstall.js
-
-      - name: Publish to npm
-        run: npm publish --access public
-        working-directory: packages/expo-ffmpeg
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GH_TOKEN: ${{ github.token }}

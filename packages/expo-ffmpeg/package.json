@@ -2,14 +2,17 @@
   "name": "ffmpeg-expo",
   "version": "0.0.1",
   "description": "FFmpeg for Expo/React Native - native video/audio processing without ffmpeg-kit",
+  "type": "commonjs",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "scripts": {
     "build": "tsc",
     "build:plugin": "tsc -p plugin/tsconfig.json",
+    "prepare:package": "npm run build && npm run build:plugin",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf build plugin/build",
-    "prepublishOnly": "npm run build && npm run build:plugin",
+    "pack:check": "npm run prepare:package && node ../../scripts/validate-package.js && publint .",
+    "prepublishOnly": "npm run prepare:package",
     "postinstall": "node scripts/postinstall.js"
   },
   "keywords": [
@@ -23,7 +26,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/kingjnr4/ffmpeg-expo.git"
+    "url": "git+https://github.com/kingjnr4/ffmpeg-expo.git"
   },
   "author": "",
   "license": "MIT",
@@ -42,10 +45,19 @@
   "files": [
     "build",
     "android",
+    "!android/jniLibs",
+    "!android/jniLibs/**",
+    "!android/libs",
+    "!android/libs/**",
     "ios",
+    "!ios/Frameworks",
+    "!ios/Frameworks/**",
     "plugin/build",
     "scripts",
     "expo-module.config.json",
     "app.plugin.js"
-  ]
+  ],
+  "ffmpegExpo": {
+    "binaryReleaseTag": "v0.0.1"
+  }
 }

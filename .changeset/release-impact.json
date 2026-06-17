@@ -1,0 +1,49 @@
+{
+  "exemptLabels": ["no-changeset-required"],
+  "versionPackagesBranch": "changesets/version-packages",
+  "relevant": [
+    {
+      "paths": ["packages/expo-ffmpeg/package.json"],
+      "reason": "published package metadata or release configuration changed"
+    },
+    {
+      "paths": ["packages/expo-ffmpeg/src/**"],
+      "reason": "public JavaScript API, runtime behaviour, or exported types changed"
+    },
+    {
+      "paths": ["packages/expo-ffmpeg/plugin/src/**", "packages/expo-ffmpeg/app.plugin.js"],
+      "reason": "Expo config plugin behaviour changed"
+    },
+    {
+      "paths": ["packages/expo-ffmpeg/android/**", "packages/expo-ffmpeg/ios/**"],
+      "reason": "native module source included in the npm package changed"
+    },
+    {
+      "paths": ["packages/expo-ffmpeg/scripts/**"],
+      "reason": "install-time package behaviour changed"
+    },
+    {
+      "paths": ["packages/expo-ffmpeg/expo-module.config.json"],
+      "reason": "Expo module configuration changed"
+    },
+    {
+      "paths": ["packages/expo-ffmpeg/README.md", "packages/expo-ffmpeg/LICENSE"],
+      "reason": "published package documentation or licensing changed"
+    },
+    {
+      "paths": ["packages/ffmpeg-build/**"],
+      "reason": "FFmpeg binary builder changed and may affect the binary release consumed by the package"
+    }
+  ],
+  "ignored": [
+    "example/**",
+    "docs/**",
+    ".github/**",
+    ".changeset/config.json",
+    ".changeset/README.md",
+    ".changeset/release-impact.json",
+    "README.md",
+    "turbo.json",
+    "package-lock.json"
+  ]
+}

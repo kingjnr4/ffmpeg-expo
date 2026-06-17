@@ -1,0 +1,28 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changeset:
+    name: Changeset check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed files
+        run: gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[].filename' > changed-files.txt
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Check for required Changeset
+        run: node scripts/check-changeset.js changed-files.txt
