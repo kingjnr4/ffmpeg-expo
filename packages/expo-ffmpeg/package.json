@@ -1,6 +1,6 @@
 {
   "name": "ffmpeg-expo",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "FFmpeg for Expo/React Native - native video/audio processing without ffmpeg-kit",
   "type": "commonjs",
   "main": "build/index.js",
