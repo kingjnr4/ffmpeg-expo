@@ -30,7 +30,7 @@ export interface FFmpegProgress {
   fps?: number;
   /** Output size in bytes */
   size?: number;
-  /** Total duration in milliseconds, when available */
+  /** Reserved for future native duration reporting; currently not emitted */
   totalDuration?: number;
 }
 
@@ -70,7 +70,7 @@ export interface RunOptions {
   onLog?: (log: FFmpegLog) => void;
   /** Log level filter (default: 'warning') */
   logLevel?: FFmpegLogLevel;
-  /** Environment variables to set */
+  /** Reserved/not ready; current native implementations do not apply env vars */
   env?: Record<string, string>;
 }
 

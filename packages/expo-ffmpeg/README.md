@@ -27,6 +27,18 @@ Use this package for basic on-device remux/copy operations, progress updates, lo
 
 Expo Go is not supported because this package includes native code. Use an Expo development build, a prebuilt native project, or a bare React Native app.
 
+Native project/toolchain requirements:
+
+| Toolchain | Version |
+| --- | --- |
+| Swift | 5.9 |
+| Java / Kotlin JVM target | 17 |
+| C++ | C++17 |
+| CMake | 3.22.1 |
+| Android NDK | r25+; the config plugin writes `26.1.10909125` by default |
+
+React Native New Architecture, Fabric, TurboModules, and direct app-level JSI setup are not required. The package is implemented as an Expo Module and is loaded through `expo-modules-core`.
+
 ## Installation
 
 ```bash
@@ -64,7 +76,7 @@ npx expo prebuild
 | --- | --- | --- |
 | `includeX86` | `false` | Including Android x86_64 emulator binaries in generated ABI filters. |
 | `ndkVersion` | `26.1.10909125` | Overriding the Android NDK version written during prebuild. |
-| `binaryUrl` | unset | Reserved for self-hosted binary setups. Not needed for normal installs. |
+| `binaryUrl` | unset | Reserved/experimental. The plugin only writes `EXPO_FFMPEG_BINARY_URL` into iOS Podfile properties; the postinstall downloader does not consume it. |
 
 `app.config.js` example:
 
@@ -86,11 +98,25 @@ export default {
 
 The config plugin does not change FFmpeg codec support. Custom codec builds require custom binaries.
 
+Do not rely on `binaryUrl` for self-hosted binary downloads yet. For now, use the default release assets or place custom binaries in the expected native directories manually.
+
 ## Bare React Native Setup
 
-- Run `pod install` after installing or updating the package.
-- Include Android ABI filters for the ABIs you ship: `arm64-v8a`, `armeabi-v7a`, and optionally `x86_64` for emulators.
-- Keep the downloaded native binaries in the package `android/jniLibs` and `ios/Frameworks` directories.
+- Keep Android binaries under `node_modules/ffmpeg-expo/android/jniLibs/<abi>/`, including `libavcodec.so`, `libavformat.so`, `libavutil.so`, `libswresample.so`, and `libswscale.so` for each ABI you ship.
+- Keep iOS binaries under `node_modules/ffmpeg-expo/ios/Frameworks/FFmpeg.xcframework`. The install script only downloads iOS binaries on macOS, so non-macOS installs need the framework added before an iOS build.
+- Run `cd ios && pod install --repo-update` after installing, updating, or manually replacing the package binaries.
+- Add Android ABI filters for the ABIs you ship if your app does not use prebuild/plugin output.
+
+```groovy
+android {
+    defaultConfig {
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+            // Add 'x86_64' if you ship emulator builds.
+        }
+    }
+}
+```
 
 ## Usage
 
@@ -132,7 +158,7 @@ function remuxWithProgress(inputPath: string, outputPath: string) {
 }
 ```
 
-Progress events include `sessionId`, `time`, `bitrate`, `speed`, `frame`, `fps`, and `size`.
+Progress events include `sessionId`, `time`, `bitrate`, `speed`, `frame`, `fps`, and `size`. The TypeScript `FFmpegProgress.totalDuration` field is reserved for future native duration reporting and is not emitted by the current Android or iOS implementation.
 
 ### Cancellation
 
@@ -174,6 +200,15 @@ run(['-i', inputPath, '-y', outputPath]);
 
 Runs a command and resolves with the result. Throws `FFmpegError` when FFmpeg returns a non-zero code.
 
+### `RunOptions`
+
+| Option | Status |
+| --- | --- |
+| `onProgress` | Supported. Receives native progress events when FFmpeg emits parseable progress. |
+| `onLog` | Supported. Receives native log events. |
+| `logLevel` | Supported. Defaults to `warning`. |
+| `env` | Reserved/not ready. It remains in the TypeScript API, but the current native implementations do not apply environment variables to the FFmpeg process. |
+
 ### `getVersion()`
 
 Returns FFmpeg version information.
@@ -183,6 +218,14 @@ Returns FFmpeg version information.
 The default binaries are LGPL-only and are intended for basic remux/copy workflows. They do not include GPL or external codec libraries such as `libx264`, `libx265`, `libmp3lame`, `libvpx`, `libopus`, `libvorbis`, `libass`, or `libdav1d`.
 
 This means common recipes such as video compression with `libx264`, video to MP3, video to FLAC, H.264 to H.265, H.264 to VP9, subtitles, and multi-track mapping are not supported by default.
+
+Compact binary component summary:
+
+| Area | Included in default binaries | Not included / not ready by default |
+| --- | --- | --- |
+| Decoding / demuxing | Common AAC, AC3, H.264, HEVC, MP3, MPEG-4, Vorbis, Opus, FLAC, PCM, VP8/VP9, MP4/MOV, Matroska/WebM, WAV/OGG inputs | Subtitle demux/encode workflows are not enabled or validated. |
+| Encoding / muxing | AAC, MPEG-4, PCM, MP4/MOV, Matroska/WebM, WAV/OGG outputs; Android also includes GIF/PNG/MJPEG image outputs | MP3, FLAC, H.265, VP9, Opus, Vorbis, and libx264/libx265/libvpx-backed encoding are not included. |
+| Filters | Basic built-in filters such as `scale`, `trim`, `volume`, `fps`, `format`, and `concat`; Android also includes `overlay` and `drawtext` | Subtitle hardcoding and `libass` workflows are not included. |
 
 For the detailed binary build configuration, see [BUILDING_BINARIES.md](https://github.com/kingjnr4/ffmpeg-expo/blob/main/packages/expo-ffmpeg/docs/BUILDING_BINARIES.md).
 

@@ -17,7 +17,7 @@ export const withFFmpegIOS: ConfigPlugin<IOSPluginProps> = (
 ) => {
   // Configure Podfile properties if needed
   config = withPodfileProperties(config, (config) => {
-    // Can be used to pass configuration to the podspec
+    // Reserved for future binary configuration support.
     if (binaryUrl) {
       config.modResults['EXPO_FFMPEG_BINARY_URL'] = binaryUrl;
     }
@@ -46,7 +46,7 @@ export const withFFmpegIOS: ConfigPlugin<IOSPluginProps> = (
 
       // Add framework search paths for the XCFramework
       const existingPaths = bs.FRAMEWORK_SEARCH_PATHS || ['$(inherited)'];
-      const ffmpegPath = '"$(PODS_ROOT)/../../node_modules/expo-ffmpeg/ios/Frameworks"';
+      const ffmpegPath = '"$(PODS_ROOT)/../../node_modules/ffmpeg-expo/ios/Frameworks"';
       
       if (Array.isArray(existingPaths)) {
         if (!existingPaths.includes(ffmpegPath)) {
@@ -58,7 +58,7 @@ export const withFFmpegIOS: ConfigPlugin<IOSPluginProps> = (
 
       // Add header search paths
       const existingHeaderPaths = bs.HEADER_SEARCH_PATHS || ['$(inherited)'];
-      const ffmpegHeaderPath = '"$(PODS_ROOT)/../../node_modules/expo-ffmpeg/ios/Frameworks/FFmpeg.xcframework/ios-arm64/Headers"';
+      const ffmpegHeaderPath = '"$(PODS_ROOT)/../../node_modules/ffmpeg-expo/ios/Frameworks/FFmpeg.xcframework/ios-arm64/Headers"';
       
       if (Array.isArray(existingHeaderPaths)) {
         if (!existingHeaderPaths.includes(ffmpegHeaderPath)) {
