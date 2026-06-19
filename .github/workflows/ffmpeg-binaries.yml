@@ -23,6 +23,8 @@ concurrency:
 
 env:
   FFMPEG_VERSION: ${{ inputs.ffmpeg_version }}
+  ANDROID_API: 24
+  IOS_MIN_VERSION: '16.4'
 
 permissions:
   contents: read
@@ -66,6 +68,7 @@ jobs:
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           OUTPUT_DIR: ${{ github.workspace }}/output/android
+          ANDROID_API: ${{ env.ANDROID_API }}
 
       - name: Package Android artifacts
         run: |
@@ -113,6 +116,7 @@ jobs:
           ../packages/ffmpeg-build/ios/build-ffmpeg.sh || (cat ffbuild/config.log && exit 1)
         env:
           OUTPUT_DIR: ${{ github.workspace }}/output/ios
+          IOS_MIN_VERSION: ${{ env.IOS_MIN_VERSION }}
 
       - name: Package iOS artifacts
         run: |

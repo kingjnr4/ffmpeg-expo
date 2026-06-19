@@ -71,8 +71,8 @@ FFMPEG_VERSION="6.1"
 # Target architectures
 ARCHS="arm64-v8a armeabi-v7a x86_64"
 
-# Minimum Android API level
-API_LEVEL=21
+# Minimum Android API level (Android 7+)
+ANDROID_API=24
 ```
 
 ## Building for iOS
@@ -113,7 +113,7 @@ FFMPEG_VERSION="6.1"
 PLATFORMS="arm64 arm64-simulator x86_64-simulator"
 
 # Minimum iOS version
-IOS_MIN_VERSION="13.0"
+IOS_MIN_VERSION="16.4"
 ```
 
 ## Codec Selection

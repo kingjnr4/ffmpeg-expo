@@ -6,7 +6,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FFMPEG_VERSION="${FFMPEG_VERSION:-6.1.1}"
-ANDROID_API="${ANDROID_API:-21}"
+ANDROID_API="${ANDROID_API:-24}"
 OUTPUT_DIR="${OUTPUT_DIR:-$SCRIPT_DIR/../../../output/android}"
 
 # NDK path detection
