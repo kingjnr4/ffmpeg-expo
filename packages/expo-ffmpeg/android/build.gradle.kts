@@ -1,6 +1,6 @@
 plugins {
     id("com.android.library")
-    id("org.jetbrains.kotlin.android")
+    id("expo-module-gradle-plugin")
 }
 
 group = "expo.modules.ffmpeg"
@@ -8,10 +8,9 @@ version = "1.0.0"
 
 android {
     namespace = "expo.modules.ffmpeg"
-    compileSdk = 34
 
     defaultConfig {
-        minSdk = 21
+        minSdk = 36
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
@@ -57,10 +56,6 @@ android {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.22")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    
-    // Expo modules
-    implementation("expo.modules:expo-modules-core:1.11.8")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 }

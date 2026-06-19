@@ -9,10 +9,10 @@ Pod::Spec.new do |s|
   s.description    = package['description']
   s.license        = package['license']
   s.author         = package['author']
-  s.homepage       = 'https://github.com/anthropics/expo-ffmpeg'
-  s.platform       = :ios, '13.0'
-  s.swift_version  = '5.4'
-  s.source         = { :git => 'https://github.com/anthropics/expo-ffmpeg.git', :tag => "v#{s.version}" }
+  s.homepage       = 'https://github.com/kingjnr4/ffmpeg-expo'
+  s.platform       = :ios, '16.4'
+  s.swift_version  = '5.9'
+  s.source         = { :git => 'https://github.com/kingjnr4/ffmpeg-expo.git', :tag => "v#{s.version}" }
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'

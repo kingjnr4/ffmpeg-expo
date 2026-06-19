@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "scheme": "expo-ffmpeg-example",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.example.expoffmpeg"
@@ -22,8 +21,7 @@
       [
         "ffmpeg-expo",
         {
-          "enableDecoders": ["h264", "hevc", "aac", "mp3", "vp8", "vp9"],
-          "enableEncoders": ["aac", "libx264"]
+          "includeX86": true
         }
       ]
     ]

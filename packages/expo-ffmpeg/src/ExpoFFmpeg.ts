@@ -1,4 +1,4 @@
-import { EventEmitter, NativeModulesProxy } from 'expo-modules-core';
+import { EventEmitter, requireNativeModule } from 'expo-modules-core';
 import type {
   FFmpegResult,
   FFmpegProgress,
@@ -16,8 +16,8 @@ type FFmpegEvents = {
   onLog: (event: FFmpegLog) => void;
 };
 
-// Get the native module
-const ExpoFFmpegModule = NativeModulesProxy.ExpoFFmpeg as NativeFFmpegModule;
+// Get the native module through the Expo Modules JSI-first loader.
+const ExpoFFmpegModule = requireNativeModule<NativeFFmpegModule>('ExpoFFmpeg');
 const emitter = new EventEmitter<FFmpegEvents>(ExpoFFmpegModule as any);
 
 // Log level mapping (index = FFmpeg's internal level)

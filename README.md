@@ -196,8 +196,12 @@ This package is built with commonly used codecs:
 | iOS      | arm64 (device), arm64 + x86_64 (simulator) |
 
 **Minimum Requirements:**
-- Android: API 21 (Android 5.0)
-- iOS: 13.0
+- Expo SDK: 56+
+- React Native: 0.85+
+- React: 19.2+
+- Node.js: 22.13.0+ for development
+- Android: API 36 (Android 7.0)
+- iOS: 16.4
 
 ## Expo Config Plugin Options
 
@@ -206,8 +210,14 @@ This package is built with commonly used codecs:
 export default {
   plugins: [
     ['ffmpeg-expo', {
-      enableDecoders: ['h264', 'hevc', 'aac', 'mp3'],
-      enableEncoders: ['aac', 'libx264'],
+      // Include x86_64 Android binaries for emulator builds.
+      includeX86: true,
+
+      // Override the Android NDK version used by prebuild.
+      ndkVersion: '26.1.10909125',
+
+      // Use this if you're self-hosting FFmpeg binaries.
+      binaryUrl: 'https://example.com/ffmpeg-binaries.zip',
     }],
   ],
 };
@@ -233,7 +243,7 @@ Ensure your `android/build.gradle` has the correct NDK version:
 ```gradle
 buildscript {
     ext {
-        ndkVersion = "25.1.8937393"
+        ndkVersion = "26.1.10909125"
     }
 }
 ```

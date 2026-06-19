@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,14 +6,14 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-} from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
-import { Video, ResizeMode } from 'expo-av';
-import { run, execute, getVersion, FFmpegError } from 'ffmpeg-expo';
-import type { FFmpegProgress, FFmpegSession } from 'ffmpeg-expo';
+} from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { File, Paths } from "expo-file-system";
+import { Video, ResizeMode } from "expo-av";
+import { run, execute, getVersion, FFmpegError } from "ffmpeg-expo";
+import type { FFmpegProgress, FFmpegSession } from "ffmpeg-expo";
 
-type CompressionPreset = 'fast' | 'balanced' | 'quality';
+type CompressionPreset = "fast" | "balanced" | "quality";
 
 interface CompressionState {
   isProcessing: boolean;
@@ -30,7 +30,7 @@ export default function HomeScreen() {
   const [state, setState] = useState<CompressionState>({
     isProcessing: false,
     progress: 0,
-    speed: '',
+    speed: "",
     inputUri: null,
     outputUri: null,
     inputSize: 0,
@@ -43,44 +43,49 @@ export default function HomeScreen() {
   const addLog = (message: string) => {
     setState((prev) => ({
       ...prev,
-      logs: [...prev.logs.slice(-50), `[${new Date().toLocaleTimeString()}] ${message}`],
+      logs: [
+        ...prev.logs.slice(-50),
+        `[${new Date().toLocaleTimeString()}] ${message}`,
+      ],
     }));
   };
 
   const pickVideo = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission required', 'Please grant access to your media library');
+      Alert.alert(
+        "Permission required",
+        "Please grant access to your media library"
+      );
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-      quality: 1,
+      mediaTypes: ["videos"],
     });
 
     if (!result.canceled && result.assets[0]) {
       const uri = result.assets[0].uri;
-      const info = await FileSystem.getInfoAsync(uri);
+      const info = new File(uri).info();
 
       setState((prev) => ({
         ...prev,
         inputUri: uri,
         outputUri: null,
-        inputSize: (info as any).size || 0,
+        inputSize: info.size || 0,
         outputSize: 0,
         logs: [],
         progress: 0,
       }));
 
-      addLog(`Selected video: ${uri.split('/').pop()}`);
-      addLog(`Input size: ${formatBytes((info as any).size || 0)}`);
+      addLog(`Selected video: ${uri.split("/").pop()}`);
+      addLog(`Input size: ${formatBytes(info.size || 0)}`);
     }
   };
 
   const compressVideo = async (preset: CompressionPreset) => {
     if (!state.inputUri) {
-      Alert.alert('No video selected', 'Please select a video first');
+      Alert.alert("No video selected", "Please select a video first");
       return;
     }
 
@@ -89,13 +94,13 @@ export default function HomeScreen() {
 
     // Generate output path
     const outputFileName = `compressed_${Date.now()}.mp4`;
-    const outputUri = `${FileSystem.cacheDirectory}${outputFileName}`;
+    const outputUri = new File(Paths.cache, outputFileName).uri;
 
     setState((prev) => ({
       ...prev,
       isProcessing: true,
       progress: 0,
-      speed: '',
+      speed: "",
       outputUri: null,
       outputSize: 0,
     }));
@@ -108,18 +113,25 @@ export default function HomeScreen() {
 
       // Build FFmpeg command
       const args = [
-        '-i', state.inputUri,
-        '-c:v', 'libx264',
-        '-preset', settings.preset,
-        '-crf', settings.crf.toString(),
-        '-c:a', 'aac',
-        '-b:a', '128k',
-        '-movflags', '+faststart',
-        '-y',
+        "-i",
+        state.inputUri,
+        "-c:v",
+        "libx264",
+        "-preset",
+        settings.preset,
+        "-crf",
+        settings.crf.toString(),
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
+        "-movflags",
+        "+faststart",
+        "-y",
         outputUri,
       ];
 
-      addLog(`Command: ffmpeg ${args.join(' ')}`);
+      addLog(`Command: ffmpeg ${args.join(" ")}`);
 
       // Run FFmpeg with progress tracking
       const session = run(args, {
@@ -131,15 +143,15 @@ export default function HomeScreen() {
           setState((prev) => ({
             ...prev,
             progress: percent,
-            speed: progress.speed ? `${progress.speed.toFixed(1)}x` : '',
+            speed: progress.speed ? `${progress.speed.toFixed(1)}x` : "",
           }));
         },
         onLog: (log) => {
-          if (log.level === 'error' || log.level === 'warning') {
+          if (log.level === "error" || log.level === "warning") {
             addLog(`[${log.level}] ${log.message}`);
           }
         },
-        logLevel: 'warning',
+        logLevel: "warning",
       });
 
       sessionRef.current = session;
@@ -150,11 +162,12 @@ export default function HomeScreen() {
 
       if (result.returnCode === 0) {
         // Get output file size
-        const outputInfo = await FileSystem.getInfoAsync(outputUri);
-        const outputSize = (outputInfo as any).size || 0;
-        const compressionRatio = state.inputSize > 0
-          ? ((1 - outputSize / state.inputSize) * 100).toFixed(1)
-          : '0';
+        const outputInfo = new File(outputUri).info();
+        const outputSize = outputInfo.size || 0;
+        const compressionRatio =
+          state.inputSize > 0
+            ? ((1 - outputSize / state.inputSize) * 100).toFixed(1)
+            : "0";
 
         setState((prev) => ({
           ...prev,
@@ -165,7 +178,11 @@ export default function HomeScreen() {
         }));
 
         addLog(`Compression complete in ${elapsed}s`);
-        addLog(`Output size: ${formatBytes(outputSize)} (${compressionRatio}% smaller)`);
+        addLog(
+          `Output size: ${formatBytes(
+            outputSize
+          )} (${compressionRatio}% smaller)`
+        );
       } else {
         throw new Error(`FFmpeg exited with code ${result.returnCode}`);
       }
@@ -183,7 +200,7 @@ export default function HomeScreen() {
         addLog(`Error: ${(error as Error).message}`);
       }
 
-      Alert.alert('Compression failed', (error as Error).message);
+      Alert.alert("Compression failed", (error as Error).message);
     } finally {
       sessionRef.current = null;
     }
@@ -191,24 +208,27 @@ export default function HomeScreen() {
 
   const cancelCompression = async () => {
     if (sessionRef.current) {
-      addLog('Cancelling compression...');
+      addLog("Cancelling compression...");
       await sessionRef.current.cancel();
       setState((prev) => ({
         ...prev,
         isProcessing: false,
         progress: 0,
       }));
-      addLog('Compression cancelled');
+      addLog("Compression cancelled");
     }
   };
 
   const showVersion = () => {
     try {
       const version = getVersion();
-      Alert.alert('FFmpeg Version', `${version.version}\n\nMajor: ${version.major}\nMinor: ${version.minor}\nPatch: ${version.patch}`);
+      Alert.alert(
+        "FFmpeg Version",
+        `${version.version}\n\nMajor: ${version.major}\nMinor: ${version.minor}\nPatch: ${version.patch}`
+      );
       addLog(`FFmpeg version: ${version.version}`);
     } catch (error) {
-      Alert.alert('Error', 'Could not get FFmpeg version');
+      Alert.alert("Error", "Could not get FFmpeg version");
     }
   };
 
@@ -230,7 +250,7 @@ export default function HomeScreen() {
           disabled={state.isProcessing}
         >
           <Text style={styles.buttonText}>
-            {state.inputUri ? 'Change Video' : 'Select Video'}
+            {state.inputUri ? "Change Video" : "Select Video"}
           </Text>
         </TouchableOpacity>
 
@@ -242,7 +262,8 @@ export default function HomeScreen() {
             {state.outputSize > 0 && (
               <Text style={styles.infoText}>
                 Output: {formatBytes(state.outputSize)} (
-                {((1 - state.outputSize / state.inputSize) * 100).toFixed(1)}% smaller)
+                {((1 - state.outputSize / state.inputSize) * 100).toFixed(1)}%
+                smaller)
               </Text>
             )}
           </View>
@@ -284,21 +305,21 @@ export default function HomeScreen() {
           <View style={styles.presetButtons}>
             <TouchableOpacity
               style={[styles.presetButton, styles.fastPreset]}
-              onPress={() => compressVideo('fast')}
+              onPress={() => compressVideo("fast")}
             >
               <Text style={styles.presetButtonText}>Fast</Text>
               <Text style={styles.presetDescription}>Quick, larger file</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.presetButton, styles.balancedPreset]}
-              onPress={() => compressVideo('balanced')}
+              onPress={() => compressVideo("balanced")}
             >
               <Text style={styles.presetButtonText}>Balanced</Text>
               <Text style={styles.presetDescription}>Good mix</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.presetButton, styles.qualityPreset]}
-              onPress={() => compressVideo('quality')}
+              onPress={() => compressVideo("quality")}
             >
               <Text style={styles.presetButtonText}>Quality</Text>
               <Text style={styles.presetDescription}>Slow, smaller file</Text>
@@ -335,7 +356,9 @@ export default function HomeScreen() {
         <View style={styles.logContainer}>
           <ScrollView style={styles.logScroll} nestedScrollEnabled>
             {state.logs.length === 0 ? (
-              <Text style={styles.logPlaceholder}>Logs will appear here...</Text>
+              <Text style={styles.logPlaceholder}>
+                Logs will appear here...
+              </Text>
             ) : (
               state.logs.map((log, index) => (
                 <Text key={index} style={styles.logText}>
@@ -353,19 +376,19 @@ export default function HomeScreen() {
 // Helper functions
 function getCompressionSettings(preset: CompressionPreset) {
   switch (preset) {
-    case 'fast':
-      return { crf: 28, preset: 'veryfast' };
-    case 'balanced':
-      return { crf: 23, preset: 'medium' };
-    case 'quality':
-      return { crf: 18, preset: 'slow' };
+    case "fast":
+      return { crf: 28, preset: "veryfast" };
+    case "balanced":
+      return { crf: 23, preset: "medium" };
+    case "quality":
+      return { crf: 18, preset: "slow" };
   }
 }
 
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) return "0 B";
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }
@@ -373,27 +396,27 @@ function formatBytes(bytes: number): string {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   content: {
     padding: 16,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   versionButton: {
     padding: 8,
   },
   versionButtonText: {
-    color: '#007AFF',
+    color: "#007AFF",
     fontSize: 14,
   },
   section: {
@@ -401,40 +424,40 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 12,
   },
   button: {
     padding: 16,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   primaryButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
   },
   cancelButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: "#FF3B30",
     marginTop: 12,
   },
   buttonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   videoInfo: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
   },
   infoText: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 4,
   },
   previewSection: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginBottom: 20,
   },
@@ -443,69 +466,69 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
+    fontWeight: "600",
+    color: "#666",
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   video: {
-    width: '100%',
+    width: "100%",
     height: 150,
-    backgroundColor: '#000',
+    backgroundColor: "#000",
     borderRadius: 8,
   },
   presetButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   presetButton: {
     flex: 1,
     padding: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   fastPreset: {
-    backgroundColor: '#34C759',
+    backgroundColor: "#34C759",
   },
   balancedPreset: {
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
   },
   qualityPreset: {
-    backgroundColor: '#5856D6',
+    backgroundColor: "#5856D6",
   },
   presetButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   presetDescription: {
-    color: 'rgba(255,255,255,0.8)',
+    color: "rgba(255,255,255,0.8)",
     fontSize: 10,
     marginTop: 2,
   },
   progressContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 16,
     borderRadius: 8,
   },
   progressBar: {
     height: 8,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: "#e0e0e0",
     borderRadius: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
-    backgroundColor: '#007AFF',
+    height: "100%",
+    backgroundColor: "#007AFF",
   },
   progressText: {
     marginTop: 8,
-    textAlign: 'center',
-    color: '#666',
+    textAlign: "center",
+    color: "#666",
     fontSize: 14,
   },
   logContainer: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: "#1a1a1a",
     borderRadius: 8,
     padding: 12,
     height: 200,
@@ -514,13 +537,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   logPlaceholder: {
-    color: '#666',
-    fontFamily: 'monospace',
+    color: "#666",
+    fontFamily: "monospace",
     fontSize: 12,
   },
   logText: {
-    color: '#0f0',
-    fontFamily: 'monospace',
+    color: "#0f0",
+    fontFamily: "monospace",
     fontSize: 11,
     lineHeight: 16,
   },
