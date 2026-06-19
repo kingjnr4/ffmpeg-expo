@@ -6,7 +6,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FFMPEG_VERSION="${FFMPEG_VERSION:-6.1.1}"
-IOS_MIN_VERSION="${IOS_MIN_VERSION:-13.0}"
+IOS_MIN_VERSION="${IOS_MIN_VERSION:-16.4}"
 OUTPUT_DIR="${OUTPUT_DIR:-$SCRIPT_DIR/../../../output/ios}"
 
 # Xcode detection

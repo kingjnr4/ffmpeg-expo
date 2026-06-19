@@ -14,6 +14,7 @@ This document explains how to build FFmpeg binaries for Android and iOS from sou
 
 - Docker (for consistent build environment)
 - Or: Linux with Android NDK r25+ installed
+- Java 17 for Android project builds
 
 ### iOS Requirements
 
@@ -71,8 +72,8 @@ FFMPEG_VERSION="6.1"
 # Target architectures
 ARCHS="arm64-v8a armeabi-v7a x86_64"
 
-# Minimum Android API level
-API_LEVEL=21
+# Minimum Android API level (Android 7+)
+ANDROID_API=24
 ```
 
 ## Building for iOS
@@ -113,7 +114,7 @@ FFMPEG_VERSION="6.1"
 PLATFORMS="arm64 arm64-simulator x86_64-simulator"
 
 # Minimum iOS version
-IOS_MIN_VERSION="13.0"
+IOS_MIN_VERSION="16.4"
 ```
 
 ## Codec Selection
@@ -122,21 +123,21 @@ Both build scripts are configured to build commonly used codecs while maintainin
 
 ### Included by Default
 
-**Decoders:**
-- H.264, HEVC (H.265), VP8, VP9
-- AV1 (via libdav1d)
-- AAC, MP3, Vorbis, Opus, FLAC
-- PNG, JPEG, GIF
+These are the FFmpeg components included by the current build scripts. App support still depends on what the package API exposes.
 
-**Encoders:**
-- H.264 (via libx264)
-- AAC, MP3 (via libmp3lame)
-- Opus, FLAC
-- PNG, JPEG, GIF
+| Component | Android | iOS |
+| --- | --- | --- |
+| Decoders | `aac`, `aac_latm`, `ac3`, `h264`, `hevc`, `mp3`, `mpeg4`, `vorbis`, `opus`, `flac`, `pcm_*`, `vp8`, `vp9`, `gif`, `png`, `mjpeg` | `aac`, `aac_latm`, `ac3`, `h264`, `hevc`, `mp3`, `mpeg4`, `vorbis`, `opus`, `flac`, `pcm_*`, `vp8`, `vp9`, `av1` |
+| Encoders | `aac`, `mpeg4`, `pcm_*`, `gif`, `png`, `mjpeg` | `aac`, `mpeg4`, `pcm_*` |
+| Demuxers | `aac`, `ac3`, `avi`, `flac`, `h264`, `hevc`, `matroska`, `mov`, `mp3`, `mp4`, `mpegts`, `ogg`, `pcm_*`, `wav`, `webm`, `gif`, `image2` | `aac`, `ac3`, `avi`, `flac`, `h264`, `hevc`, `matroska`, `mov`, `mp3`, `mp4`, `mpegts`, `ogg`, `pcm_*`, `wav`, `webm` |
+| Muxers | `adts`, `flac`, `ipod`, `matroska`, `mov`, `mp3`, `mp4`, `mpegts`, `ogg`, `pcm_*`, `wav`, `webm`, `gif`, `image2` | `adts`, `flac`, `ipod`, `matroska`, `mov`, `mp3`, `mp4`, `mpegts`, `ogg`, `pcm_*`, `wav`, `webm` |
+| Filters | `aformat`, `anull`, `atrim`, `concat`, `scale`, `trim`, `volume`, `fps`, `format`, `null`, `overlay`, `drawtext` | `aformat`, `anull`, `atrim`, `concat`, `scale`, `trim`, `volume`, `fps`, `format`, `null` |
+
+The default build scripts do not enable external libraries such as `libx264`, `libx265`, `libmp3lame`, `libvpx`, `libopus`, `libvorbis`, `libass`, or `libdav1d`. FLAC decode/demux/mux is enabled, but FLAC encoding is not enabled. Subtitle support such as `mov_text`, `srt`, `ass`, the `subtitles` filter, and `libass` is not enabled.
 
 ### Adding/Removing Codecs
 
-To modify the codec selection, edit the `--enable-*` and `--disable-*` flags in the configure command:
+To modify codec selection, edit the `--enable-*` and `--disable-*` flags in the build scripts, rebuild binaries, publish or host the new artifacts, and point the package at those artifacts:
 
 ```bash
 ./configure \
@@ -188,9 +189,9 @@ output/
 output/
 └── FFmpeg.xcframework/
     ├── ios-arm64/
-    │   └── FFmpeg.framework/
+    │   └── libffmpeg.a
     ├── ios-arm64_x86_64-simulator/
-    │   └── FFmpeg.framework/
+    │   └── libffmpeg.a
     └── Info.plist
 ```
 
@@ -202,9 +203,12 @@ After building, package and upload the binaries:
 
 ```bash
 cd output
-tar -czvf ffmpeg-android-arm64-v8a.tar.gz arm64-v8a/
-tar -czvf ffmpeg-android-armeabi-v7a.tar.gz armeabi-v7a/
-tar -czvf ffmpeg-android-x86_64.tar.gz x86_64/
+mkdir -p jniLibs
+for arch in arm64-v8a armeabi-v7a x86_64; do
+  mkdir -p "jniLibs/${arch}"
+  cp android/${arch}/lib/*.so "jniLibs/${arch}/"
+done
+tar -czvf ffmpeg-android.tar.gz -C jniLibs .
 ```
 
 ### iOS
@@ -256,45 +260,34 @@ You can also strip debug symbols:
 # Android
 $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip lib/*.so
 
-# iOS (done automatically by Xcode during archive)
-strip -x FFmpeg.framework/FFmpeg
+# iOS static libraries are packaged in FFmpeg.xcframework.
+strip -x output/ios/FFmpeg.xcframework/ios-arm64/libffmpeg.a
 ```
 
 ## Verifying the Build
 
-### Check Version
+### Check Libraries
 
 ```bash
-# The built ffmpeg binary (if enabled)
-./ffmpeg -version
-
 # Check library dependencies
 # Android
-readelf -d libavcodec.so | grep NEEDED
+readelf -d output/android/arm64-v8a/lib/libavcodec.so
 
 # iOS
-otool -L FFmpeg.framework/FFmpeg
-```
-
-### Check Codecs
-
-```bash
-./ffmpeg -codecs | grep -E "(h264|hevc|aac|mp3)"
+file output/ios/FFmpeg.xcframework/ios-arm64/libffmpeg.a
 ```
 
 ## CI Integration
 
-The repository includes a GitHub Actions workflow (`.github/workflows/release.yml`) that automatically builds binaries when a new tag is pushed:
+The repository includes a manually triggered GitHub Actions workflow (`.github/workflows/ffmpeg-binaries.yml`) that builds and publishes binary release assets:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+gh workflow run ffmpeg-binaries.yml -f ffmpeg_version=6.1.1 -f binary_release_tag=ffmpeg-6.1.1-r1
 ```
 
 This triggers:
-1. Android build (via Docker)
-2. iOS build (on macOS runner)
-3. Upload to GitHub Releases
-4. npm publish
+1. Android build on Ubuntu
+2. iOS build on macOS
+3. Upload of `ffmpeg-android.tar.gz`, `ffmpeg-ios.zip`, and checksums to a GitHub Release
 
 See the workflow file for details on customizing the CI process.

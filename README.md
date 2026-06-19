@@ -1,16 +1,31 @@
 # ffmpeg-expo
 
-Native FFmpeg for Expo/React Native - on-device video and audio processing without relying on the discontinued ffmpeg-kit.
+Native FFmpeg support for Expo and React Native apps.
+
+Use this package for basic on-device remux/copy operations, progress updates, logs, cancellation, and FFmpeg version information. Advanced transcoding recipes such as CRF/preset compression, MP3 encoding, H.265 encoding, VP9 encoding, subtitles, filters, and multi-input mapping are not supported by the default package.
 
 ## Features
 
-- Native FFmpeg execution on Android and iOS
-- Progress tracking during encoding
-- Session cancellation support
-- Prebuilt binaries downloaded automatically at install time
-- Expo config plugin for seamless integration
-- TypeScript support with full type definitions
-- LGPL-compliant (no GPL codecs)
+- Android and iOS native FFmpeg binaries
+- Basic remux/copy command support
+- Progress and log callbacks
+- Session cancellation
+- Expo config plugin
+- TypeScript definitions
+- LGPL-only FFmpeg build with no GPL codecs
+
+## Requirements
+
+| Requirement | Version |
+| --- | --- |
+| Expo SDK | `>=56.0.0` |
+| React Native | `>=0.85.0` |
+| React | `>=19.2.0` |
+| Node.js | `>=22.13.0` |
+| Android | Android 7.0+ / API 24+ |
+| iOS | 16.4+ |
+
+Expo Go is not supported because this package includes native code. Use an Expo development build, a prebuilt native project, or a bare React Native app.
 
 ## Installation
 
@@ -18,47 +33,76 @@ Native FFmpeg for Expo/React Native - on-device video and audio processing witho
 npx expo install ffmpeg-expo
 ```
 
-The postinstall script will automatically download prebuilt FFmpeg binaries for your platform from GitHub Releases.
+The package downloads prebuilt FFmpeg binaries during install.
 
-### Expo Config Plugin
+## Expo Setup
 
-Add the plugin to your `app.json` or `app.config.js`:
+Add the config plugin, then run prebuild.
 
 ```json
 {
   "expo": {
-    "plugins": ["ffmpeg-expo"]
+    "plugins": [
+      [
+        "ffmpeg-expo",
+        {
+          "includeX86": true
+        }
+      ]
+    ]
   }
 }
 ```
-
-Then run prebuild:
 
 ```bash
 npx expo prebuild
 ```
 
+### Plugin Options
+
+| Option | Default | Use it for |
+| --- | --- | --- |
+| `includeX86` | `false` | Including Android x86_64 emulator binaries in generated ABI filters. |
+| `ndkVersion` | `26.1.10909125` | Overriding the Android NDK version written during prebuild. |
+| `binaryUrl` | unset | Reserved for self-hosted binary setups. Not needed for normal installs. |
+
+`app.config.js` example:
+
+```javascript
+export default {
+  expo: {
+    plugins: [
+      [
+        'ffmpeg-expo',
+        {
+          includeX86: true,
+          ndkVersion: '26.1.10909125',
+        },
+      ],
+    ],
+  },
+};
+```
+
+The config plugin does not change FFmpeg codec support. Custom codec builds require custom binaries.
+
+## Bare React Native Setup
+
+- Run `pod install` after installing or updating the package.
+- Include Android ABI filters for the ABIs you ship: `arm64-v8a`, `armeabi-v7a`, and optionally `x86_64` for emulators.
+- Keep the downloaded native binaries in the package `android/jniLibs` and `ios/Frameworks` directories.
+
 ## Usage
 
-### Basic Video Compression
+### Basic Remux
 
 ```typescript
 import { execute, FFmpegError } from 'ffmpeg-expo';
 
-async function compressVideo(inputPath: string, outputPath: string) {
+async function remux(inputPath: string, outputPath: string) {
   try {
-    const result = await execute([
-      '-i', inputPath,
-      '-c:v', 'libx264',
-      '-preset', 'medium',
-      '-crf', '23',
-      '-c:a', 'aac',
-      '-b:a', '128k',
-      '-y',
-      outputPath,
-    ]);
-    
-    console.log('Compression complete!', result.duration);
+    const result = await execute(['-i', inputPath, '-y', outputPath]);
+    console.log('Finished', result.returnCode, result.duration);
   } catch (error) {
     if (error instanceof FFmpegError) {
       console.error('FFmpeg failed:', error.returnCode, error.output);
@@ -67,25 +111,15 @@ async function compressVideo(inputPath: string, outputPath: string) {
 }
 ```
 
-### With Progress Tracking
+### Progress And Logs
 
 ```typescript
 import { run } from 'ffmpeg-expo';
-import type { FFmpegProgress } from 'ffmpeg-expo';
 
-function compressWithProgress(inputPath: string, outputPath: string) {
-  const session = run([
-    '-i', inputPath,
-    '-c:v', 'libx264',
-    '-preset', 'fast',
-    '-crf', '28',
-    outputPath,
-  ], {
-    onProgress: (progress: FFmpegProgress) => {
-      if (progress.totalDuration) {
-        const percent = (progress.time / progress.totalDuration) * 100;
-        console.log(`Progress: ${percent.toFixed(1)}%`);
-      }
+function remuxWithProgress(inputPath: string, outputPath: string) {
+  const session = run(['-i', inputPath, '-y', outputPath], {
+    onProgress: (progress) => {
+      console.log(`Processed: ${progress.time}ms`);
       console.log(`Speed: ${progress.speed}x`);
     },
     onLog: (log) => {
@@ -94,183 +128,99 @@ function compressWithProgress(inputPath: string, outputPath: string) {
     logLevel: 'info',
   });
 
-  // Cancel if needed
-  // session.cancel();
-
   return session.result;
 }
 ```
 
-### Get FFmpeg Version
+Progress events include `sessionId`, `time`, `bitrate`, `speed`, `frame`, `fps`, and `size`.
+
+### Cancellation
+
+```typescript
+const session = run(['-i', inputPath, '-y', outputPath]);
+
+await session.cancel();
+const result = await session.result;
+```
+
+Cancelled sessions finish with return code `255`. Partial output files are not deleted automatically.
+
+### FFmpeg Version
 
 ```typescript
 import { getVersion } from 'ffmpeg-expo';
 
 const version = getVersion();
 console.log(`FFmpeg ${version.version}`);
-console.log(`Major: ${version.major}, Minor: ${version.minor}, Patch: ${version.patch}`);
 ```
 
-## API Reference
+## API
 
 ### `run(args, options?)`
 
-Execute an FFmpeg command with full control over the session.
+Starts a session and returns:
 
-**Parameters:**
-- `args: string[]` - FFmpeg arguments (without the 'ffmpeg' prefix)
-- `options?: RunOptions` - Optional configuration
+- `id`: session identifier.
+- `cancel()`: requests cancellation.
+- `result`: promise that resolves with the session result.
 
-**Returns:** `FFmpegSession` object with:
-- `id: string` - Unique session identifier
-- `cancel(): Promise<boolean>` - Cancel the session
-- `result: Promise<FFmpegResult>` - Promise resolving when complete
+Supported command shape:
+
+```typescript
+run(['-i', inputPath, '-y', outputPath]);
+```
 
 ### `execute(args, options?)`
 
-Execute an FFmpeg command and await the result. Throws `FFmpegError` on failure.
-
-**Parameters:**
-- `args: string[]` - FFmpeg arguments
-- `options?: RunOptions` - Optional configuration
-
-**Returns:** `Promise<FFmpegResult>`
+Runs a command and resolves with the result. Throws `FFmpegError` when FFmpeg returns a non-zero code.
 
 ### `getVersion()`
 
-Get FFmpeg version information.
+Returns FFmpeg version information.
 
-**Returns:** `FFmpegVersion` object with `version`, `major`, `minor`, `patch`
+## Default Codec Support
 
-### Types
+The default binaries are LGPL-only and are intended for basic remux/copy workflows. They do not include GPL or external codec libraries such as `libx264`, `libx265`, `libmp3lame`, `libvpx`, `libopus`, `libvorbis`, `libass`, or `libdav1d`.
 
-```typescript
-interface RunOptions {
-  onProgress?: (progress: FFmpegProgress) => void;
-  onLog?: (log: FFmpegLog) => void;
-  logLevel?: FFmpegLogLevel;
-  env?: Record<string, string>;
-}
+This means common recipes such as video compression with `libx264`, video to MP3, video to FLAC, H.264 to H.265, H.264 to VP9, subtitles, and multi-track mapping are not supported by default.
 
-interface FFmpegProgress {
-  sessionId: string;
-  time: number;        // Current position in ms
-  bitrate: number;     // kbits/s
-  speed: number;       // e.g., 1.5 = 1.5x realtime
-  frame?: number;      // Current frame (video)
-  fps?: number;        // Frames per second
-  size?: number;       // Output size in bytes
-  totalDuration?: number;  // Total duration in ms
-}
+For the detailed binary build configuration, see [BUILDING_BINARIES.md](./packages/expo-ffmpeg/docs/BUILDING_BINARIES.md).
 
-interface FFmpegResult {
-  returnCode: number;  // 0 = success
-  output: string;      // Combined stdout/stderr
-  duration: number;    // Execution time in ms
-}
-
-type FFmpegLogLevel = 
-  | 'quiet' | 'panic' | 'fatal' | 'error' 
-  | 'warning' | 'info' | 'verbose' | 'debug' | 'trace';
-```
-
-## Included Codecs
-
-This package is built with commonly used codecs:
-
-**Video Decoders:** H.264, HEVC (H.265), VP8, VP9, AV1, MPEG-4, ProRes, GIF, PNG, JPEG
-
-**Video Encoders:** libx264 (H.264), MPEG-4, GIF, PNG, JPEG
-
-**Audio Decoders:** AAC, MP3, Vorbis, Opus, FLAC, PCM variants
-
-**Audio Encoders:** AAC, MP3 (libmp3lame), Opus, FLAC, PCM variants
-
-**Containers:** MP4, MOV, MKV, WebM, AVI, FLV, GIF, MP3, WAV, OGG, FLAC
-
-## Platform Support
+## Platform Binaries
 
 | Platform | Architectures |
-|----------|---------------|
-| Android  | arm64-v8a, armeabi-v7a, x86_64 |
-| iOS      | arm64 (device), arm64 + x86_64 (simulator) |
-
-**Minimum Requirements:**
-- Expo SDK: 56+
-- React Native: 0.85+
-- React: 19.2+
-- Node.js: 22.13.0+ for development
-- Android: API 36 (Android 7.0)
-- iOS: 16.4
-
-## Expo Config Plugin Options
-
-```javascript
-// app.config.js
-export default {
-  plugins: [
-    ['ffmpeg-expo', {
-      // Include x86_64 Android binaries for emulator builds.
-      includeX86: true,
-
-      // Override the Android NDK version used by prebuild.
-      ndkVersion: '26.1.10909125',
-
-      // Use this if you're self-hosting FFmpeg binaries.
-      binaryUrl: 'https://example.com/ffmpeg-binaries.zip',
-    }],
-  ],
-};
-```
+| --- | --- |
+| Android | `arm64-v8a`, `armeabi-v7a`, `x86_64` |
+| iOS | `arm64` device, `arm64` + `x86_64` simulator |
 
 ## Troubleshooting
 
 ### Binaries not found
 
-If the postinstall script fails to download binaries, you can manually download them:
+Run the install script again from the installed package:
 
 ```bash
-# In node_modules/ffmpeg-expo
 node scripts/postinstall.js
 ```
 
-Or download directly from the [GitHub Releases](https://github.com/kingjnr4/ffmpeg-expo/releases) page.
+The expected release assets are `ffmpeg-android.tar.gz` and `ffmpeg-ios.zip`.
 
-### Build errors on Android
+### Android build errors
 
-Ensure your `android/build.gradle` has the correct NDK version:
+Check that your Android project uses a compatible NDK and ABI filters. The plugin default NDK version is `26.1.10909125`.
 
-```gradle
-buildscript {
-    ext {
-        ndkVersion = "26.1.10909125"
-    }
-}
-```
+### iOS build errors
 
-### Build errors on iOS
-
-Make sure CocoaPods dependencies are up to date:
+Run CocoaPods after native project generation or package updates:
 
 ```bash
 cd ios && pod install --repo-update
 ```
 
-## Building from Source
+## Building From Source
 
-See [BUILDING_BINARIES.md](./packages/expo-ffmpeg/docs/BUILDING_BINARIES.md) for instructions on building FFmpeg binaries yourself.
+See [BUILDING_BINARIES.md](./packages/expo-ffmpeg/docs/BUILDING_BINARIES.md).
 
 ## License
 
-This package is licensed under the MIT License.
-
-FFmpeg itself is licensed under LGPL 2.1. This package uses an LGPL-only build without GPL components to simplify licensing compliance. See [LICENSING.md](./packages/expo-ffmpeg/docs/LICENSING.md) for details.
-
-## Contributing
-
-Contributions are welcome! Please read the contributing guidelines before submitting a pull request.
-
-## Acknowledgments
-
-- [FFmpeg](https://ffmpeg.org/) - The multimedia framework
-- [Expo](https://expo.dev/) - The platform this module is built for
+This package is MIT licensed. FFmpeg is LGPL 2.1. See [LICENSING.md](./packages/expo-ffmpeg/docs/LICENSING.md).
