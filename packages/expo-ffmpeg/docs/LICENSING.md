@@ -1,23 +1,23 @@
 # Licensing Information
 
-This document explains the licensing of expo-ffmpeg and FFmpeg, and your obligations when using this package.
+This document explains the licensing of ffmpeg-expo and FFmpeg, and your obligations when using this package.
 
 ## Summary
 
 | Component | License |
 |-----------|---------|
-| expo-ffmpeg (this package) | MIT |
+| ffmpeg-expo (this package) | MIT |
 | FFmpeg libraries (prebuilt) | LGPL 2.1 |
 | Your application | Your choice (with LGPL compliance) |
 
-## expo-ffmpeg Package License
+## ffmpeg-expo Package License
 
-The expo-ffmpeg package code (TypeScript, Kotlin, Swift, C++ wrapper code) is licensed under the MIT License:
+The ffmpeg-expo package code (TypeScript, Kotlin, Swift, C++ wrapper code) is licensed under the MIT License:
 
 ```
 MIT License
 
-Copyright (c) 2024 expo-ffmpeg contributors
+Copyright (c) 2024 ffmpeg-expo contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -61,13 +61,15 @@ The following popular codecs are **not included** because they would require GPL
 
 - libx264 (H.264 encoder) - We use FFmpeg's native encoders instead
 - libx265 (HEVC encoder)
+- libmp3lame (MP3 encoder)
+- libvpx, libopus, libvorbis, libass, and libdav1d
 - Some filters and features
 
 If you need these codecs, see [Building with GPL Codecs](#building-with-gpl-codecs) below.
 
 ## Your LGPL Compliance Obligations
 
-When you distribute an app using expo-ffmpeg, you must comply with LGPL 2.1. Here's what you need to do:
+When you distribute an app using ffmpeg-expo, you must comply with LGPL 2.1. Here's what you need to do:
 
 ### 1. Attribution
 
@@ -104,10 +106,10 @@ If you modify FFmpeg or want to provide the exact version, host the source code 
 
 LGPL requires that users can replace the LGPL library with their own version. For mobile apps, this is typically satisfied by:
 
-- **iOS:** The dynamic framework structure allows replacement (though App Store policies may complicate this)
-- **Android:** Using shared libraries (.so files) allows replacement
+- **Android:** FFmpeg is packaged as shared libraries (`.so` files).
+- **iOS:** FFmpeg is packaged as static libraries inside an XCFramework. Static linking can add LGPL compliance obligations around relinking or object-file availability.
 
-The expo-ffmpeg build satisfies this requirement by using dynamic/shared libraries.
+Consult legal counsel for distribution requirements, especially for iOS static linking and app store distribution.
 
 ## Attribution Template
 
@@ -166,12 +168,12 @@ Some codecs have their own licenses in addition to FFmpeg's:
 | Codec | License | Notes |
 |-------|---------|-------|
 | AAC (native) | LGPL | Part of FFmpeg |
-| MP3 (libmp3lame) | LGPL | Included |
+| MP3 decode/demux/mux | LGPL | Native FFmpeg components; `libmp3lame` is not included |
 | H.264 decoder | LGPL | Patent considerations may apply |
 | HEVC decoder | LGPL | Patent considerations may apply |
-| VP8/VP9 | BSD | WebM Project |
-| Opus | BSD | Xiph.org |
-| FLAC | BSD/GPL | Public domain reference |
+| VP8/VP9 decode | LGPL | Native FFmpeg components; external `libvpx` is not included |
+| Opus decode | LGPL | Native FFmpeg component; external `libopus` is not included |
+| FLAC decode/demux/mux | LGPL | FLAC encoding is not enabled in the default binaries |
 
 ### Patent Considerations
 
@@ -201,7 +203,7 @@ If you modify the FFmpeg libraries (not just the wrapper), you must:
 
 ### Can I use this in an app I sell?
 
-Yes, you can sell apps that use expo-ffmpeg. The LGPL doesn't restrict commercial use.
+Yes, you can sell apps that use ffmpeg-expo. The LGPL doesn't restrict commercial use.
 
 ### What about the App Store / Play Store?
 

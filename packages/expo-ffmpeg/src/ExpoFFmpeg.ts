@@ -51,11 +51,10 @@ function generateSessionId(): string {
  * ```typescript
  * const session = run([
  *   '-i', inputPath,
- *   '-c:v', 'libx264',
- *   '-preset', 'fast',
+ *   '-y',
  *   outputPath
  * ], {
- *   onProgress: (p) => console.log(`${p.speed}x speed`)
+ *   onProgress: (p) => console.log(`${p.time}ms processed`)
  * });
  *
  * const result = await session.result;
@@ -120,7 +119,7 @@ export function run(args: string[], options: RunOptions = {}): FFmpegSession {
  * @example
  * ```typescript
  * try {
- *   const result = await execute(['-i', input, '-c:v', 'copy', output]);
+ *   const result = await execute(['-i', input, '-y', output]);
  *   console.log('Success!', result.duration);
  * } catch (error) {
  *   if (error instanceof FFmpegError) {

@@ -10,12 +10,10 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { File, Paths } from "expo-file-system";
 import { Video, ResizeMode } from "expo-av";
-import { run, execute, getVersion, FFmpegError } from "ffmpeg-expo";
+import { run, getVersion, FFmpegError } from "ffmpeg-expo";
 import type { FFmpegProgress, FFmpegSession } from "ffmpeg-expo";
 
-type CompressionPreset = "fast" | "balanced" | "quality";
-
-interface CompressionState {
+interface ProcessingState {
   isProcessing: boolean;
   progress: number;
   speed: string;
@@ -27,7 +25,7 @@ interface CompressionState {
 }
 
 export default function HomeScreen() {
-  const [state, setState] = useState<CompressionState>({
+  const [state, setState] = useState<ProcessingState>({
     isProcessing: false,
     progress: 0,
     speed: "",
@@ -83,17 +81,14 @@ export default function HomeScreen() {
     }
   };
 
-  const compressVideo = async (preset: CompressionPreset) => {
+  const remuxVideo = async () => {
     if (!state.inputUri) {
       Alert.alert("No video selected", "Please select a video first");
       return;
     }
 
-    // Get FFmpeg settings based on preset
-    const settings = getCompressionSettings(preset);
-
     // Generate output path
-    const outputFileName = `compressed_${Date.now()}.mp4`;
+    const outputFileName = `remuxed_${Date.now()}.mp4`;
     const outputUri = new File(Paths.cache, outputFileName).uri;
 
     setState((prev) => ({
@@ -105,28 +100,15 @@ export default function HomeScreen() {
       outputSize: 0,
     }));
 
-    addLog(`Starting compression with "${preset}" preset`);
-    addLog(`CRF: ${settings.crf}, Preset: ${settings.preset}`);
+    addLog("Starting remux/copy operation");
 
     try {
       const startTime = Date.now();
 
-      // Build FFmpeg command
+      // Current native execution supports a basic input-to-output remux/copy path.
       const args = [
         "-i",
         state.inputUri,
-        "-c:v",
-        "libx264",
-        "-preset",
-        settings.preset,
-        "-crf",
-        settings.crf.toString(),
-        "-c:a",
-        "aac",
-        "-b:a",
-        "128k",
-        "-movflags",
-        "+faststart",
         "-y",
         outputUri,
       ];
@@ -136,13 +118,9 @@ export default function HomeScreen() {
       // Run FFmpeg with progress tracking
       const session = run(args, {
         onProgress: (progress: FFmpegProgress) => {
-          const percent = progress.totalDuration
-            ? Math.min(100, (progress.time / progress.totalDuration) * 100)
-            : 0;
-
           setState((prev) => ({
             ...prev,
-            progress: percent,
+            progress: prev.progress,
             speed: progress.speed ? `${progress.speed.toFixed(1)}x` : "",
           }));
         },
@@ -164,11 +142,6 @@ export default function HomeScreen() {
         // Get output file size
         const outputInfo = new File(outputUri).info();
         const outputSize = outputInfo.size || 0;
-        const compressionRatio =
-          state.inputSize > 0
-            ? ((1 - outputSize / state.inputSize) * 100).toFixed(1)
-            : "0";
-
         setState((prev) => ({
           ...prev,
           isProcessing: false,
@@ -177,12 +150,8 @@ export default function HomeScreen() {
           outputSize,
         }));
 
-        addLog(`Compression complete in ${elapsed}s`);
-        addLog(
-          `Output size: ${formatBytes(
-            outputSize
-          )} (${compressionRatio}% smaller)`
-        );
+        addLog(`Remux complete in ${elapsed}s`);
+        addLog(`Output size: ${formatBytes(outputSize)}`);
       } else {
         throw new Error(`FFmpeg exited with code ${result.returnCode}`);
       }
@@ -200,22 +169,22 @@ export default function HomeScreen() {
         addLog(`Error: ${(error as Error).message}`);
       }
 
-      Alert.alert("Compression failed", (error as Error).message);
+      Alert.alert("Operation failed", (error as Error).message);
     } finally {
       sessionRef.current = null;
     }
   };
 
-  const cancelCompression = async () => {
+  const cancelOperation = async () => {
     if (sessionRef.current) {
-      addLog("Cancelling compression...");
+      addLog("Cancelling operation...");
       await sessionRef.current.cancel();
       setState((prev) => ({
         ...prev,
         isProcessing: false,
         progress: 0,
       }));
-      addLog("Compression cancelled");
+      addLog("Operation cancelled");
     }
   };
 
@@ -236,7 +205,7 @@ export default function HomeScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Video Compression Demo</Text>
+        <Text style={styles.title}>Video Remux Demo</Text>
         <TouchableOpacity style={styles.versionButton} onPress={showVersion}>
           <Text style={styles.versionButtonText}>FFmpeg Info</Text>
         </TouchableOpacity>
@@ -261,9 +230,7 @@ export default function HomeScreen() {
             </Text>
             {state.outputSize > 0 && (
               <Text style={styles.infoText}>
-                Output: {formatBytes(state.outputSize)} (
-                {((1 - state.outputSize / state.inputSize) * 100).toFixed(1)}%
-                smaller)
+                Output: {formatBytes(state.outputSize)}
               </Text>
             )}
           </View>
@@ -298,33 +265,15 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Compression Controls */}
+      {/* Processing Controls */}
       {state.inputUri && !state.isProcessing && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Compression Preset</Text>
-          <View style={styles.presetButtons}>
-            <TouchableOpacity
-              style={[styles.presetButton, styles.fastPreset]}
-              onPress={() => compressVideo("fast")}
-            >
-              <Text style={styles.presetButtonText}>Fast</Text>
-              <Text style={styles.presetDescription}>Quick, larger file</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.presetButton, styles.balancedPreset]}
-              onPress={() => compressVideo("balanced")}
-            >
-              <Text style={styles.presetButtonText}>Balanced</Text>
-              <Text style={styles.presetDescription}>Good mix</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.presetButton, styles.qualityPreset]}
-              onPress={() => compressVideo("quality")}
-            >
-              <Text style={styles.presetButtonText}>Quality</Text>
-              <Text style={styles.presetDescription}>Slow, smaller file</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={[styles.button, styles.primaryButton]}
+            onPress={remuxVideo}
+          >
+            <Text style={styles.buttonText}>Remux Video</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -338,12 +287,12 @@ export default function HomeScreen() {
               />
             </View>
             <Text style={styles.progressText}>
-              {state.progress.toFixed(0)}% {state.speed && `(${state.speed})`}
+              Processing {state.speed && `(${state.speed})`}
             </Text>
           </View>
           <TouchableOpacity
             style={[styles.button, styles.cancelButton]}
-            onPress={cancelCompression}
+            onPress={cancelOperation}
           >
             <Text style={styles.buttonText}>Cancel</Text>
           </TouchableOpacity>
@@ -371,18 +320,6 @@ export default function HomeScreen() {
       </View>
     </ScrollView>
   );
-}
-
-// Helper functions
-function getCompressionSettings(preset: CompressionPreset) {
-  switch (preset) {
-    case "fast":
-      return { crf: 28, preset: "veryfast" };
-    case "balanced":
-      return { crf: 23, preset: "medium" };
-    case "quality":
-      return { crf: 18, preset: "slow" };
-  }
 }
 
 function formatBytes(bytes: number): string {
@@ -476,35 +413,6 @@ const styles = StyleSheet.create({
     height: 150,
     backgroundColor: "#000",
     borderRadius: 8,
-  },
-  presetButtons: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  presetButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  fastPreset: {
-    backgroundColor: "#34C759",
-  },
-  balancedPreset: {
-    backgroundColor: "#007AFF",
-  },
-  qualityPreset: {
-    backgroundColor: "#5856D6",
-  },
-  presetButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  presetDescription: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 10,
-    marginTop: 2,
   },
   progressContainer: {
     backgroundColor: "#fff",

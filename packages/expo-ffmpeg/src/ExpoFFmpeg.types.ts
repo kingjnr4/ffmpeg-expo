@@ -1,4 +1,4 @@
-// Type definitions for expo-ffmpeg
+// Type definitions for ffmpeg-expo
 
 /**
  * Result returned after FFmpeg command execution
@@ -30,7 +30,7 @@ export interface FFmpegProgress {
   fps?: number;
   /** Output size in bytes */
   size?: number;
-  /** Total duration in milliseconds (if known) */
+  /** Total duration in milliseconds, when available */
   totalDuration?: number;
 }
 
