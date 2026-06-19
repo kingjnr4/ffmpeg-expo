@@ -63,6 +63,6 @@
     "app.plugin.js"
   ],
   "ffmpegExpo": {
-    "binaryReleaseTag": "ffmpeg-6.1.1-r1"
+    "binaryReleaseTag": "ffmpeg-6.1.1-r2"
   }
 }
