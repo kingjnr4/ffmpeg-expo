@@ -77,7 +77,7 @@ export const withFFmpegAndroid: ConfigPlugin<AndroidPluginProps> = (
       config.modResults.contents = contents;
     } else {
       WarningAggregator.addWarningAndroid(
-        'expo-ffmpeg',
+        'ffmpeg-expo',
         'Cannot configure Kotlin DSL build.gradle files automatically. Please add ndk.abiFilters manually.'
       );
     }

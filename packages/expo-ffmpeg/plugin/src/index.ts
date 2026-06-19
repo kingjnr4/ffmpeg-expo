@@ -12,8 +12,8 @@ export interface FFmpegPluginProps {
   includeX86?: boolean;
 
   /**
-   * Custom URL for downloading prebuilt binaries
-   * Use this if you're self-hosting the FFmpeg binaries
+   * Reserved/experimental. Currently only written to iOS Podfile properties;
+   * the postinstall downloader does not consume it.
    */
   binaryUrl?: string;
 
