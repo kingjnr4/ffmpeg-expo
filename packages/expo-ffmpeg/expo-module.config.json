@@ -1,9 +1,9 @@
 {
-  "platforms": ["android", "ios"],
+  "platforms": ["android", "apple"],
   "android": {
     "modules": ["expo.modules.ffmpeg.ExpoFFmpegModule"]
   },
-  "ios": {
+  "apple": {
     "modules": ["ExpoFFmpegModule"]
   }
 }

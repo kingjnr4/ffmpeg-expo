@@ -12,22 +12,31 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "expo": "~52.0.0",
-    "expo-av": "~14.0.0",
-    "expo-document-picker": "~12.0.0",
+    "expo": "~56.0.12",
+    "expo-av": "~16.0.8",
+    "expo-document-picker": "~56.0.4",
     "ffmpeg-expo": "*",
-    "expo-file-system": "~18.0.0",
-    "expo-image-picker": "~15.0.0",
-    "expo-router": "~4.0.0",
-    "expo-status-bar": "~2.0.0",
-    "react": "18.3.1",
-    "react-native": "0.76.3",
-    "react-native-safe-area-context": "4.12.0",
-    "react-native-screens": "~4.1.0"
+    "expo-file-system": "~56.0.8",
+    "expo-image-picker": "~56.0.18",
+    "expo-router": "~56.2.11",
+    "expo-status-bar": "~56.0.4",
+    "react": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-reanimated": "4.3.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "4.25.2",
+    "react-native-worklets": "0.8.3"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.0",
-    "@types/react": "~18.3.0",
-    "typescript": "^5.3.0"
+    "@babel/core": "^7.26.0",
+    "@types/react": "~19.2.14",
+    "typescript": "^6.0.3"
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["expo-av", "expo-modules-jsi", "ffmpeg-expo"]
+      }
+    }
   }
 }
