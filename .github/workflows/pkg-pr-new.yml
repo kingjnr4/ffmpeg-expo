@@ -49,7 +49,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Checkout pull request commit
+      - name: Checkout pull request
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+
+      - name: Checkout approved fork commit
+        if: github.event_name == 'pull_request_review'
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
