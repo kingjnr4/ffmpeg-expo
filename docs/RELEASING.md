@@ -32,7 +32,7 @@ You usually do not need a Changeset for:
 Create a Changeset locally with:
 
 ```bash
-npm run changeset
+pnpm run changesets:add
 ```
 
 The Changeset should target `ffmpeg-expo`.
@@ -46,7 +46,7 @@ Stable package releases are automatic after the generated `Version Packages` PR 
 The `.github/workflows/release.yml` workflow runs on pushes to `main`:
 
 1. Validates the repository.
-2. If pending Changesets exist, `changesets/action` runs `changeset version` and creates or updates one `Version Packages` PR.
+2. If pending Changesets exist, `changesets/action` runs `pnpm run changesets:version` and creates or updates one `Version Packages` PR.
 3. If no pending Changesets exist, `changesets/action` runs the publish command.
 4. The publish command validates the package contents and publishes unpublished package versions to npm.
 5. `changesets/action` creates the corresponding GitHub releases after publication.
@@ -65,6 +65,31 @@ Configure trusted publishing for the existing npm package `ffmpeg-expo`:
 6. Save the trusted publisher.
 
 No `NPM_TOKEN` is required for stable releases. The publish job uses GitHub Actions OIDC with `id-token: write` only in the npm publish job.
+
+## Changesets Bot Token Setup
+
+The `Version Packages` PR is created and updated with `REPOBOT_TOKEN` so its workflow runs are treated as trusted repository automation instead of default `GITHUB_TOKEN` automation.
+
+Create a bot account and a fine-grained personal access token for `kingjnr4/ffmpeg-expo` with these repository permissions:
+
+- Contents: read and write
+- Pull requests: read and write
+
+Add the token as this repository secret:
+
+- `REPOBOT_TOKEN`
+
+The workflow exposes `REPOBOT_TOKEN` to `changesets/action` as `GITHUB_TOKEN`. Do not store a secret named `GITHUB_TOKEN`; GitHub provides that name automatically for the default Actions token.
+
+## Preview Package Releases
+
+This repository uses `pkg.pr.new` to publish temporary package previews for pull requests without publishing to npm.
+
+Install the `pkg.pr.new` GitHub App on `kingjnr4/ffmpeg-expo`. Normal same-repository pull requests publish previews automatically. Fork pull requests publish previews only after a maintainer approves the PR.
+
+Preview workflows intentionally avoid repository secrets and dependency caches. They run with read-only repository permissions and execute untrusted fork code only from the `pull_request_review` approval flow.
+
+The generated `Version Packages` PR is intentionally excluded from preview publishing because normal feature and fix PRs are the useful test surface.
 
 ## FFmpeg Binary Releases
 
@@ -137,7 +162,7 @@ git branch -d dev
 ## Event Behaviour
 
 1. Normal internal pull request: CI and the Changeset check run with read-only permissions.
-2. Fork pull request: CI and the Changeset check run without npm credentials, OIDC, write tokens, environment secrets, or signing credentials.
+2. Fork pull request: CI and the Changeset check run without npm credentials, OIDC, write tokens, environment secrets, signing credentials, or dependency caches.
 3. Documentation-only pull request: no Changeset is required unless packed package docs change user-visible package output.
 4. Public package change with a Changeset: the PR passes the Changeset check and merges normally.
 5. Public package change without a Changeset: the Changeset check fails until a Changeset is added or `no-changeset-required` is applied.

@@ -8,11 +8,11 @@
   "scripts": {
     "build": "tsc",
     "build:plugin": "tsc -p plugin/tsconfig.json",
-    "prepare:package": "npm run build && npm run build:plugin",
+    "prepare:package": "pnpm run build && pnpm run build:plugin",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf build plugin/build",
-    "pack:check": "npm run prepare:package && node ../../scripts/validate-package.js && publint .",
-    "prepublishOnly": "npm run prepare:package",
+    "pack:check": "pnpm run prepare:package && node ../../scripts/validate-package.js && publint .",
+    "prepublishOnly": "pnpm run prepare:package",
     "postinstall": "node scripts/postinstall.js"
   },
   "keywords": [

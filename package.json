@@ -10,20 +10,21 @@
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "publish-packages": "npm run pack:check && changeset publish",
-    "pack:check": "npm run pack:check --workspace ffmpeg-expo",
+    "changesets:add": "changeset",
+    "changesets:version": "changeset version",
+    "changesets:publish": "pnpm run pack:check && changeset publish",
+    "pack:check": "pnpm --filter ffmpeg-expo run pack:check",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.1",
     "@changesets/cli": "^2.29.7",
+    "pkg-pr-new": "^0.0.75",
     "publint": "^0.3.12",
     "turbo": "^2.0.0",
     "typescript": "^6.0.3"
   },
-  "packageManager": "npm@10.2.0",
+  "packageManager": "pnpm@11.8.0",
   "engines": {
     "node": ">=22.13.0"
   }
