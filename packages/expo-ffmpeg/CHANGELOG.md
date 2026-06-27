@@ -1,5 +1,11 @@
 # ffmpeg-expo
 
+## 0.1.0
+
+### Minor Changes
+
+- [#9](https://github.com/kingjnr4/ffmpeg-expo/pull/9) [`158a2b1`](https://github.com/kingjnr4/ffmpeg-expo/commit/158a2b1134af15702d28427fae32bbca4ef63826) Thanks [@kingjnr4](https://github.com/kingjnr4)! - Require Expo SDK 56 and align the native module with the SDK 56 Expo Modules runtime, including React Native 0.85, React 19.2, iOS 16.4+,android 7+ and Node 22.13.0+ development support.
+
 ## 0.0.2
 
 ### Patch Changes
