@@ -44,6 +44,6 @@
     ".changeset/release-impact.json",
     "README.md",
     "turbo.json",
-    "package-lock.json"
+    "pnpm-lock.yaml"
   ]
 }

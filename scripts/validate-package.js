@@ -5,7 +5,7 @@ const path = require('path');
 
 const packageDir = path.resolve(__dirname, '..', 'packages', 'expo-ffmpeg');
 
-const result = spawnSync('npm', ['pack', '--dry-run', '--json'], {
+const result = spawnSync('pnpm', ['pack', '--dry-run', '--json'], {
   cwd: packageDir,
   encoding: 'utf8',
   stdio: ['ignore', 'pipe', 'pipe'],
@@ -18,7 +18,8 @@ if (result.status !== 0) {
 
 let pack;
 try {
-  [pack] = JSON.parse(result.stdout);
+  const parsed = JSON.parse(result.stdout);
+  pack = Array.isArray(parsed) ? parsed[0] : parsed;
 } catch (error) {
   process.stderr.write(result.stdout);
   throw error;
@@ -72,4 +73,4 @@ if (missing.length > 0 || unwanted.length > 0) {
   process.exit(1);
 }
 
-console.log(`Validated ${pack.name}@${pack.version} package contents (${pack.entryCount} files).`);
+console.log(`Validated ${pack.name}@${pack.version} package contents (${pack.files.length} files).`);

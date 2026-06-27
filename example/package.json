@@ -15,7 +15,7 @@
     "expo": "~56.0.12",
     "expo-av": "~16.0.8",
     "expo-document-picker": "~56.0.4",
-    "ffmpeg-expo": "*",
+    "ffmpeg-expo": "workspace:*",
     "expo-file-system": "~56.0.8",
     "expo-image-picker": "~56.0.18",
     "expo-router": "~56.2.11",

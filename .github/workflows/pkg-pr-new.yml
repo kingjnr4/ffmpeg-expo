@@ -1,0 +1,84 @@
+name: Package Previews
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  NODE_VERSION: '22.13.0'
+  SKIP_FFMPEG_DOWNLOAD: '1'
+
+concurrency:
+  group: package-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Publish package preview
+    runs-on: ubuntu-latest
+    if: >-
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.head.ref != 'changeset-release/main' &&
+        github.event.pull_request.draft == false
+      ) || (
+        github.event_name == 'pull_request_review' &&
+        github.event.review.state == 'approved' &&
+        github.event.pull_request.base.ref == 'main' &&
+        github.event.pull_request.head.repo.full_name != github.repository &&
+        github.event.pull_request.head.ref != 'changeset-release/main' &&
+        github.event.pull_request.draft == false
+      )
+    steps:
+      - name: Check approver permission
+        if: github.event_name == 'pull_request_review'
+        run: |
+          permission=$(gh api "repos/${{ github.repository }}/collaborators/${{ github.event.review.user.login }}/permission" --jq '.permission')
+          case "$permission" in
+            admin|maintain|write) exit 0 ;;
+            *) echo "Approver does not have write access." && exit 1 ;;
+          esac
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Checkout pull request
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+
+      - name: Checkout approved fork commit
+        if: github.event_name == 'pull_request_review'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b0f76dfb45f55f8421693e4803ac7bb65143bd34
+        with:
+          version: 11.8.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate package contents
+        run: pnpm run pack:check
+
+      - name: Publish preview package
+        run: pnpm exec pkg-pr-new publish './packages/expo-ffmpeg' --pnpm --packageManager=pnpm --commentWithSha

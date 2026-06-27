@@ -25,25 +25,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b0f76dfb45f55f8421693e4803ac7bb65143bd34
+        with:
+          version: 11.8.0
+          run_install: false
+
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: npm run build
+        run: pnpm run build
 
       - name: Typecheck
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Validate npm package contents
-        run: npm run pack:check
+        run: pnpm run pack:check
 
-  version-packages:
+  changesets-version:
     name: Version Packages PR
     runs-on: ubuntu-latest
     needs: validate
@@ -59,29 +65,35 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b0f76dfb45f55f8421693e4803ac7bb65143bd34
+        with:
+          version: 11.8.0
+          run_install: false
+
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Create or update Version Packages PR
         id: changesets
         uses: changesets/action@e0145edc7d9d8679003495b11f87bd8ef63c0cba
         with:
           title: Version Packages
-          commit: Version Packages
-          version: npm run version-packages
+          commit: "chore: version packages"
+          version: pnpm run changesets:version
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.REPOBOT_TOKEN }}
 
   publish-npm:
     name: Publish npm and GitHub releases
     runs-on: ubuntu-latest
-    needs: [validate, version-packages]
-    if: github.repository == 'kingjnr4/ffmpeg-expo' && needs.version-packages.outputs.hasChangesets == 'false'
+    needs: [validate, changesets-version]
+    if: github.repository == 'kingjnr4/ffmpeg-expo' && needs['changesets-version'].outputs.hasChangesets == 'false'
     permissions:
       contents: write
       id-token: write
@@ -91,6 +103,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b0f76dfb45f55f8421693e4803ac7bb65143bd34
+        with:
+          version: 11.8.0
+          run_install: false
+
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
@@ -98,21 +116,21 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: npm run build
+        run: pnpm run build
 
       - name: Typecheck
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Validate npm package contents
-        run: npm run pack:check
+        run: pnpm run pack:check
 
       - name: Publish ffmpeg-expo to npm
         uses: changesets/action@e0145edc7d9d8679003495b11f87bd8ef63c0cba
         with:
-          publish: npm run publish-packages
+          publish: pnpm run changesets:publish
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.REPOBOT_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
