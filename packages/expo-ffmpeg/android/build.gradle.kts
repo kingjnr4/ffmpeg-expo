@@ -1,16 +1,22 @@
+import groovy.json.JsonSlurper
+
 plugins {
     id("com.android.library")
     id("expo-module-gradle-plugin")
 }
 
+val packageJson = JsonSlurper().parse(file("../package.json")) as Map<*, *>
+val packageVersion = packageJson["version"] as String
+
 group = "expo.modules.ffmpeg"
-version = "1.0.0"
+version = packageVersion
 
 android {
     namespace = "expo.modules.ffmpeg"
 
     defaultConfig {
         minSdk = 24
+        versionName = packageVersion
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
