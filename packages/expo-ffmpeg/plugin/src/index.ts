@@ -18,8 +18,7 @@ export interface FFmpegPluginProps {
   binaryUrl?: string;
 
   /**
-   * Android-specific NDK version
-   * @default "26.1.10909125"
+   * Android-specific NDK version. When unset, the Expo/Android Gradle defaults are used.
    */
   ndkVersion?: string;
 }
@@ -28,7 +27,7 @@ const withFFmpeg: ConfigPlugin<FFmpegPluginProps | void> = (config, props = {}) 
   const {
     includeX86 = false,
     binaryUrl,
-    ndkVersion = '26.1.10909125',
+    ndkVersion,
   } = props || {};
 
   // Apply Android modifications

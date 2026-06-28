@@ -35,7 +35,7 @@ Native project/toolchain requirements:
 | Java / Kotlin JVM target | 17 |
 | C++ | C++17 |
 | CMake | 3.22.1 |
-| Android NDK | r25+; the config plugin writes `26.1.10909125` by default |
+| Android NDK | r25+|
 
 React Native New Architecture, Fabric, TurboModules, and direct app-level JSI setup are not required. The package is implemented as an Expo Module and is loaded through `expo-modules-core`.
 
@@ -75,7 +75,7 @@ npx expo prebuild
 | Option | Default | Use it for |
 | --- | --- | --- |
 | `includeX86` | `false` | Including Android x86_64 emulator binaries in generated ABI filters. |
-| `ndkVersion` | `26.1.10909125` | Overriding the Android NDK version written during prebuild. |
+| `ndkVersion` | unset | Optional Android NDK override. When unset, Expo/Android Gradle defaults are used. |
 | `binaryUrl` | unset | Reserved/experimental. The plugin only writes `EXPO_FFMPEG_BINARY_URL` into iOS Podfile properties; the postinstall downloader does not consume it. |
 
 `app.config.js` example:
@@ -88,7 +88,6 @@ export default {
         'ffmpeg-expo',
         {
           includeX86: true,
-          ndkVersion: '26.1.10909125',
         },
       ],
     ],
@@ -250,7 +249,7 @@ The expected release assets are `ffmpeg-android.tar.gz` and `ffmpeg-ios.zip`.
 
 ### Android build errors
 
-Check that your Android project uses a compatible NDK and ABI filters. The plugin default NDK version is `26.1.10909125`.
+Check that your Android project uses a compatible NDK and ABI filters. The plugin only writes an NDK version when `ndkVersion` is explicitly configured.
 
 ### iOS build errors
 

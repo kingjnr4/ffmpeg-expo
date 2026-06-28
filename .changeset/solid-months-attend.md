@@ -2,4 +2,4 @@
 "ffmpeg-expo": patch
 ---
 
-Define the Android library version name from package metadata so Expo autolinking can configure ffmpeg-expo successfully.
+Fix Android Expo autolinking by disabling Expo's local Maven publication path for the source-built module and stop overriding the app's NDK version unless explicitly configured.

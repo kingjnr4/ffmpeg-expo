@@ -1,3 +1,4 @@
+import expo.modules.plugin.gradle.ExpoModuleExtension
 import groovy.json.JsonSlurper
 
 plugins {
@@ -11,12 +12,29 @@ val packageVersion = packageJson["version"] as String
 group = "expo.modules.ffmpeg"
 version = packageVersion
 
+extensions.configure<ExpoModuleExtension>("expoModule") {
+    canBePublished = false
+}
+
+val prepareFFmpegBinaries = tasks.register("prepareFFmpegBinaries") {
+    inputs.file(file("../package.json"))
+    inputs.file(file("../scripts/postinstall.js"))
+    outputs.dir(file("jniLibs"))
+    outputs.dir(file("include"))
+
+    doLast {
+        providers.exec {
+            workingDir(file(".."))
+            commandLine("node", "scripts/postinstall.js")
+        }.result.get()
+    }
+}
+
 android {
     namespace = "expo.modules.ffmpeg"
 
     defaultConfig {
         minSdk = 24
-        versionName = packageVersion
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
@@ -59,6 +77,10 @@ android {
             jniLibs.srcDirs("jniLibs")
         }
     }
+}
+
+tasks.named("preBuild") {
+    dependsOn(prepareFFmpegBinaries)
 }
 
 dependencies {

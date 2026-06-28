@@ -10,7 +10,7 @@
 namespace ffmpeg {
 
 // Thread-local session for log callback
-static thread_local FFmpegSession* currentSession = nullptr;
+thread_local FFmpegSession* currentSession = nullptr;
 
 // Custom FFmpeg log callback
 static void ffmpeg_log_callback(void* ptr, int level, const char* fmt, va_list vl) {
