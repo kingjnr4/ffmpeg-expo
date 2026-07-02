@@ -14,6 +14,8 @@ namespace ffmpeg {
 // Thread-local session for callbacks
 extern thread_local FFmpegSession* currentSession;
 
+int executeCommand(const std::vector<char*>& argv);
+
 // Progress parsing from FFmpeg stderr output
 class ProgressParser {
 public:

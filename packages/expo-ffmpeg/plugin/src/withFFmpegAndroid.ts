@@ -15,7 +15,7 @@ interface AndroidPluginProps {
  */
 export const withFFmpegAndroid: ConfigPlugin<AndroidPluginProps> = (
   config,
-  { includeX86 = false, ndkVersion = '26.1.10909125' }
+  { includeX86 = false, ndkVersion }
 ) => {
   // Modify project-level build.gradle to set NDK version
   config = withProjectBuildGradle(config, (config) => {
@@ -23,7 +23,7 @@ export const withFFmpegAndroid: ConfigPlugin<AndroidPluginProps> = (
       const contents = config.modResults.contents;
 
       // Add NDK version to buildscript ext if not present
-      if (!contents.includes('ndkVersion')) {
+      if (ndkVersion && !contents.includes('ndkVersion')) {
         config.modResults.contents = contents.replace(
           /buildscript\s*\{(\s*ext\s*\{)?/,
           (match, hasExt) => {
