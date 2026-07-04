@@ -105,6 +105,8 @@ int FFmpegSession::execute(JNIEnv* env, jobjectArray args, int logLevel, jobject
     int argc = env->GetArrayLength(args);
     std::vector<std::string> argStrings;
     std::vector<char*> argv;
+    argStrings.reserve(argc + 1);
+    argv.reserve(argc + 1);
     
     // First arg should be "ffmpeg"
     argStrings.push_back("ffmpeg");
