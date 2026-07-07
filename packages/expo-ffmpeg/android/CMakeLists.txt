@@ -4,13 +4,10 @@ project(ffmpeg-jni)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find required packages
 find_library(log-lib log)
 
-# FFmpeg library paths
 set(FFMPEG_LIB_DIR ${CMAKE_SOURCE_DIR}/jniLibs/${ANDROID_ABI})
 
-# Add FFmpeg shared libraries
 add_library(avcodec SHARED IMPORTED)
 set_target_properties(avcodec PROPERTIES IMPORTED_LOCATION ${FFMPEG_LIB_DIR}/libavcodec.so)
 
@@ -26,17 +23,14 @@ set_target_properties(swresample PROPERTIES IMPORTED_LOCATION ${FFMPEG_LIB_DIR}/
 add_library(swscale SHARED IMPORTED)
 set_target_properties(swscale PROPERTIES IMPORTED_LOCATION ${FFMPEG_LIB_DIR}/libswscale.so)
 
-# Include directories for FFmpeg headers
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# Build our JNI wrapper
 add_library(ffmpeg-jni SHARED
     src/main/cpp/ffmpeg_jni.cpp
     src/main/cpp/ffmpeg_session.cpp
     src/main/cpp/ffmpeg_progress.cpp
 )
 
-# Link libraries
 target_link_libraries(ffmpeg-jni
     ${log-lib}
     avcodec
@@ -46,7 +40,6 @@ target_link_libraries(ffmpeg-jni
     swscale
 )
 
-# Set library output name
 set_target_properties(ffmpeg-jni PROPERTIES
     LIBRARY_OUTPUT_NAME "ffmpeg-jni"
 )

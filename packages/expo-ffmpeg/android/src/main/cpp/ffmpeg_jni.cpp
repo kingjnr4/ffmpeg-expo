@@ -9,17 +9,14 @@
 
 namespace ffmpeg {
 
-// Thread-local session for log callback
 thread_local FFmpegSession* currentSession = nullptr;
 
-// Custom FFmpeg log callback
 static void ffmpeg_log_callback(void* ptr, int level, const char* fmt, va_list vl) {
     if (currentSession == nullptr) return;
     
     char line[1024];
     vsnprintf(line, sizeof(line), fmt, vl);
     
-    // Remove trailing newline
     size_t len = strlen(line);
     if (len > 0 && line[len - 1] == '\n') {
         line[len - 1] = '\0';
@@ -30,7 +27,6 @@ static void ffmpeg_log_callback(void* ptr, int level, const char* fmt, va_list v
     }
 }
 
-// SessionManager implementation
 SessionManager& SessionManager::getInstance() {
     static SessionManager instance;
     return instance;
@@ -54,13 +50,11 @@ void SessionManager::destroySession(long handle) {
     sessions_.erase(handle);
 }
 
-// FFmpegSession implementation
 FFmpegSession::FFmpegSession(const std::string& sessionId)
     : sessionId_(sessionId) {
 }
 
 FFmpegSession::~FFmpegSession() {
-    // Ensure callback is cleared
     if (callbackRef_ != nullptr && jvm_ != nullptr) {
         JNIEnv* env;
         if (jvm_->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
@@ -139,9 +133,8 @@ void FFmpegSession::cancel() {
     cancelled_.store(true);
 }
 
-} // namespace ffmpeg
+}
 
-// JNI exports
 extern "C" {
 
 JNIEXPORT jstring JNICALL
@@ -189,4 +182,4 @@ Java_expo_modules_ffmpeg_FFmpegBridge_execute(
     return session->execute(env, args, logLevel, callback);
 }
 
-} // extern "C"
+}

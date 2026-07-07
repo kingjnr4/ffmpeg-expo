@@ -10,17 +10,14 @@ import type {
   NativeFFmpegModule,
 } from './ExpoFFmpeg.types';
 
-// Event types for the emitter (values must be listener signatures)
 type FFmpegEvents = {
   onProgress: (event: FFmpegProgress) => void;
   onLog: (event: FFmpegLog) => void;
 };
 
-// Get the native module through the Expo Modules JSI-first loader.
 const ExpoFFmpegModule = requireNativeModule<NativeFFmpegModule>('ExpoFFmpeg');
 const emitter = new EventEmitter<FFmpegEvents>(ExpoFFmpegModule as any);
 
-// Log level mapping (index = FFmpeg's internal level)
 const LOG_LEVELS: FFmpegLogLevel[] = [
   'quiet',
   'panic',
@@ -33,9 +30,6 @@ const LOG_LEVELS: FFmpegLogLevel[] = [
   'trace',
 ];
 
-/**
- * Generate a unique session ID
- */
 function generateSessionId(): string {
   return `ffmpeg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -64,10 +58,8 @@ export function run(args: string[], options: RunOptions = {}): FFmpegSession {
   const sessionId = generateSessionId();
   const { onProgress, onLog, logLevel = 'warning', env } = options;
 
-  // Track subscriptions for cleanup
   const subscriptions: (() => void)[] = [];
 
-  // Set up progress listener
   if (onProgress) {
     const subscription = emitter.addListener(
       'onProgress',
@@ -80,7 +72,6 @@ export function run(args: string[], options: RunOptions = {}): FFmpegSession {
     subscriptions.push(() => subscription.remove());
   }
 
-  // Set up log listener
   if (onLog) {
     const subscription = emitter.addListener('onLog', (event: FFmpegLog) => {
       if (event.sessionId === sessionId) {
@@ -90,12 +81,10 @@ export function run(args: string[], options: RunOptions = {}): FFmpegSession {
     subscriptions.push(() => subscription.remove());
   }
 
-  // Cleanup function
   const cleanup = () => {
     subscriptions.forEach((unsub) => unsub());
   };
 
-  // Execute FFmpeg
   const resultPromise = ExpoFFmpegModule.run(sessionId, args, {
     logLevel: LOG_LEVELS.indexOf(logLevel),
     environmentVariables: env,

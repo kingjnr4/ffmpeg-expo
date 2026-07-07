@@ -1,4 +1,3 @@
-// Main exports
 export {
   run,
   execute,
@@ -7,7 +6,6 @@ export {
   FFmpegCancelledError,
 } from './ExpoFFmpeg';
 
-// Type exports
 export type {
   FFmpegResult,
   FFmpegProgress,

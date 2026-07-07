@@ -1,6 +1,3 @@
-// FFmpeg umbrella header for iOS
-// This header imports all FFmpeg headers needed by the module
-
 #ifndef FFmpeg_h
 #define FFmpeg_h
 
@@ -14,4 +11,4 @@
 #include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
 
-#endif /* FFmpeg_h */
+#endif

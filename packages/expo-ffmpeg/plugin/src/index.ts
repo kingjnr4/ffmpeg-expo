@@ -30,10 +30,8 @@ const withFFmpeg: ConfigPlugin<FFmpegPluginProps | void> = (config, props = {}) 
     ndkVersion,
   } = props || {};
 
-  // Apply Android modifications
   config = withFFmpegAndroid(config, { includeX86, ndkVersion });
 
-  // Apply iOS modifications
   config = withFFmpegIOS(config, { binaryUrl });
 
   return config;

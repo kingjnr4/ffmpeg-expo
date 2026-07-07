@@ -87,7 +87,6 @@ export default function HomeScreen() {
       return;
     }
 
-    // Generate output path
     const outputFileName = `remuxed_${Date.now()}.mp4`;
     const outputUri = new File(Paths.cache, outputFileName).uri;
 
@@ -115,7 +114,6 @@ export default function HomeScreen() {
 
       addLog(`Command: ffmpeg ${args.join(" ")}`);
 
-      // Run FFmpeg with progress tracking
       const session = run(args, {
         onProgress: (progress: FFmpegProgress) => {
           setState((prev) => ({
@@ -134,12 +132,10 @@ export default function HomeScreen() {
 
       sessionRef.current = session;
 
-      // Wait for completion
       const result = await session.result;
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
       if (result.returnCode === 0) {
-        // Get output file size
         const outputInfo = new File(outputUri).info();
         const outputSize = outputInfo.size || 0;
         setState((prev) => ({
@@ -203,7 +199,6 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Video Remux Demo</Text>
         <TouchableOpacity style={styles.versionButton} onPress={showVersion}>
@@ -211,7 +206,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Video Selection */}
       <View style={styles.section}>
         <TouchableOpacity
           style={[styles.button, styles.primaryButton]}
@@ -237,7 +231,6 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* Video Preview */}
       {(state.inputUri || state.outputUri) && (
         <View style={styles.previewSection}>
           {state.inputUri && (
@@ -265,7 +258,6 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Processing Controls */}
       {state.inputUri && !state.isProcessing && (
         <View style={styles.section}>
           <TouchableOpacity
@@ -277,7 +269,6 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Progress */}
       {state.isProcessing && (
         <View style={styles.section}>
           <View style={styles.progressContainer}>
@@ -299,7 +290,6 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Logs */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Logs</Text>
         <View style={styles.logContainer}>
