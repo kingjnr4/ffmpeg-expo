@@ -99,12 +99,9 @@ jobs:
       - name: Build TypeScript
         run: pnpm run build
 
-      # Validate Gradle files parse correctly
       - name: Validate Android Gradle files
         working-directory: packages/expo-ffmpeg/android
         run: |
-          # Check that build.gradle.kts is valid Kotlin syntax
-          # This is a basic check - full validation happens during actual build
           if grep -q "plugins {" build.gradle.kts && grep -q "android {" build.gradle.kts; then
             echo "Gradle file structure looks valid"
           else
@@ -140,10 +137,8 @@ jobs:
       - name: Validate Podspec
         working-directory: packages/expo-ffmpeg/ios
         run: |
-          # Basic podspec syntax validation
           pod spec lint ExpoFFmpeg.podspec --allow-warnings --quick || true
-          # Note: Full validation would require the prebuilt FFmpeg binaries
-          # which aren't available in CI. The --quick flag skips downloading.
+          # Full validation requires prebuilt FFmpeg binaries, which are not available in CI.
           echo "Podspec basic validation complete"
 
   plugin-check:

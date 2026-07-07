@@ -1,8 +1,14 @@
 # ffmpeg-expo
 
-Native FFmpeg support for Expo and React Native apps.
+Native FFmpeg support for Expo apps.
 
 Use this package for basic on-device remux/copy operations, progress updates, logs, cancellation, and FFmpeg version information. Advanced transcoding recipes such as CRF/preset compression, MP3 encoding, H.265 encoding, VP9 encoding, subtitles, filters, and multi-input mapping are not supported by the default package.
+
+## Status
+
+This project is not stable for production use yet. It is mostly a hobby project while the native implementation, packaging, and binary distribution are still being worked out.
+
+Use `ffmpeg-expo@0.0.3` or newer. Versions before `0.0.3` are not expected to work.
 
 ## Features
 
@@ -25,7 +31,7 @@ Use this package for basic on-device remux/copy operations, progress updates, lo
 | Android | Android 7.0+ / API 24+ |
 | iOS | 16.4+ |
 
-Expo Go is not supported because this package includes native code. Use an Expo development build, a prebuilt native project, or a bare React Native app.
+Expo Go is not supported because this package includes native code. Use an Expo development build or a prebuilt Expo native project.
 
 Native project/toolchain requirements:
 
@@ -35,7 +41,7 @@ Native project/toolchain requirements:
 | Java / Kotlin JVM target | 17 |
 | C++ | C++17 |
 | CMake | 3.22.1 |
-| Android NDK | r25+;|
+| Android NDK | r25+ |
 
 React Native New Architecture, Fabric, TurboModules, and direct app-level JSI setup are not required. The package is implemented as an Expo Module and is loaded through `expo-modules-core`.
 
@@ -98,24 +104,6 @@ export default {
 The config plugin does not change FFmpeg codec support. Custom codec builds require custom binaries.
 
 Do not rely on `binaryUrl` for self-hosted binary downloads yet. For now, use the default release assets or place custom binaries in the expected native directories manually.
-
-## Bare React Native Setup
-
-- Keep Android binaries under `node_modules/ffmpeg-expo/android/jniLibs/<abi>/`, including `libavcodec.so`, `libavformat.so`, `libavutil.so`, `libswresample.so`, and `libswscale.so` for each ABI you ship.
-- Keep iOS binaries under `node_modules/ffmpeg-expo/ios/Frameworks/FFmpeg.xcframework`. The install script only downloads iOS binaries on macOS, so non-macOS installs need the framework added before an iOS build.
-- Run `cd ios && pod install --repo-update` after installing, updating, or manually replacing the package binaries.
-- Add Android ABI filters for the ABIs you ship if your app does not use prebuild/plugin output.
-
-```groovy
-android {
-    defaultConfig {
-        ndk {
-            abiFilters 'arm64-v8a', 'armeabi-v7a'
-            // Add 'x86_64' if you ship emulator builds.
-        }
-    }
-}
-```
 
 ## Usage
 

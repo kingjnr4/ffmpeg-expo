@@ -1,16 +1,10 @@
 #!/usr/bin/env node
 
-/**
- * Postinstall script for ffmpeg-expo
- * Downloads prebuilt FFmpeg binaries for Android and iOS
- */
-
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const { execSync } = require('child_process');
 
-// Configuration
 const packageJson = require('../package.json');
 const BINARY_VERSION = packageJson.ffmpegExpo?.binaryReleaseTag;
 const FFMPEG_VERSION =
@@ -29,9 +23,6 @@ const ANDROID_INCLUDE_DIR = path.join(PACKAGE_DIR, 'android', 'include');
 const IOS_DIR = path.join(PACKAGE_DIR, 'ios', 'Frameworks');
 const ANDROID_HEADER_DIRS = ['libavcodec', 'libavformat', 'libavutil', 'libswresample', 'libswscale'];
 
-/**
- * Download a file from URL
- */
 function download(url, dest) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);
@@ -39,7 +30,6 @@ function download(url, dest) {
     const request = (urlString) => {
       https
         .get(urlString, (response) => {
-          // Handle redirects
           if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
             request(response.headers.location);
             return;
@@ -66,9 +56,6 @@ function download(url, dest) {
   });
 }
 
-/**
- * Extract archive
- */
 function extract(archive, dest, type) {
   try {
     if (type === 'tar.gz') {
@@ -120,9 +107,6 @@ function writeAndroidGeneratedHeaders() {
   );
 }
 
-/**
- * Check if binaries already exist
- */
 function binariesExist(platform) {
   if (platform === 'android') {
     return fs.existsSync(path.join(ANDROID_DIR, 'arm64-v8a', 'libavcodec.so'));
@@ -136,9 +120,6 @@ function androidHeadersExist() {
   return fs.existsSync(path.join(ANDROID_INCLUDE_DIR, 'libavcodec', 'avcodec.h'));
 }
 
-/**
- * Download and extract binaries for a platform
- */
 async function downloadPlatform(platform) {
   if (binariesExist(platform)) {
     console.log(`[${platform}] Binaries already present, skipping download`);
@@ -157,14 +138,12 @@ async function downloadPlatform(platform) {
     await download(url, tempFile);
     console.log(`[${platform}] Extracting...`);
 
-    // Ensure destination directory exists
     fs.mkdirSync(destDir, { recursive: true });
 
     if (!extract(tempFile, destDir, ext)) {
       throw new Error('Extraction failed');
     }
 
-    // Cleanup
     fs.unlinkSync(tempFile);
     console.log(`[${platform}] Done`);
     return true;
@@ -173,7 +152,6 @@ async function downloadPlatform(platform) {
     console.warn(`[${platform}] You may need to build binaries manually or download from:`);
     console.warn(`[${platform}] ${url}`);
 
-    // Cleanup temp file if it exists
     if (fs.existsSync(tempFile)) {
       fs.unlinkSync(tempFile);
     }
@@ -234,11 +212,7 @@ async function downloadAndroidHeaders() {
   }
 }
 
-/**
- * Main entry point
- */
 async function main() {
-  // Skip in CI environments that don't need binaries
   if (process.env.SKIP_FFMPEG_DOWNLOAD === '1') {
     console.log('[ffmpeg-expo] Skipping binary download (SKIP_FFMPEG_DOWNLOAD=1)');
     return;
@@ -246,14 +220,11 @@ async function main() {
 
   console.log('[ffmpeg-expo] Checking FFmpeg binaries...');
 
-  // Determine which platforms to download
   const isMac = process.platform === 'darwin';
 
-  // Always download Android (needed for all builds)
   await downloadPlatform('android');
   await downloadAndroidHeaders();
 
-  // Only download iOS on macOS
   if (isMac) {
     await downloadPlatform('ios');
   } else {
@@ -265,6 +236,6 @@ async function main() {
 
 main().catch((error) => {
   console.error('[ffmpeg-expo] Postinstall error:', error);
-  // Don't fail the install - binaries can be added manually
+  // Do not fail package installs; binaries can be added manually.
   process.exit(0);
 });

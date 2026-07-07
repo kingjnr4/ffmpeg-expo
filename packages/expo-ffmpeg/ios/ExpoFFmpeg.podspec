@@ -17,20 +17,15 @@ Pod::Spec.new do |s|
 
   s.dependency 'ExpoModulesCore'
 
-  # Source files
   s.source_files = '**/*.{h,m,mm,swift}'
   s.exclude_files = 'Frameworks/**/*'
 
-  # Vendored framework
   s.vendored_frameworks = 'Frameworks/FFmpeg.xcframework'
 
-  # Required system frameworks
   s.frameworks = 'AudioToolbox', 'AVFoundation', 'CoreMedia', 'VideoToolbox', 'CoreVideo', 'CoreAudio'
 
-  # System libraries
   s.libraries = 'z', 'bz2', 'iconv'
 
-  # Build settings
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
     'SWIFT_COMPILATION_MODE' => 'wholemodule',

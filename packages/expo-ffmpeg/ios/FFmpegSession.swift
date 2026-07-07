@@ -50,7 +50,6 @@ class FFmpegSession {
             throw FFmpegError.cancelled
         }
         
-        // Set up FFmpeg log callback
         let sessionPtr = Unmanaged.passUnretained(self).toOpaque()
         FFmpegBridge.setLogCallback(sessionPtr) { ptr, level, message in
             guard let ptr = ptr, let message = message else { return }
@@ -63,7 +62,6 @@ class FFmpegSession {
             
             session.onLog(level, messageStr)
             
-            // Parse progress from log output
             if let progress = session.parseProgress(from: messageStr) {
                 session.onProgress(progress)
             }
@@ -73,7 +71,6 @@ class FFmpegSession {
             FFmpegBridge.clearLogCallback()
         }
         
-        // Execute FFmpeg command
         let returnCode = FFmpegBridge.execute(args: args, logLevel: logLevel) { [weak self] in
             return self?.cancelled ?? true
         }
@@ -110,7 +107,6 @@ class FFmpegSession {
         var fps: Double = 0
         var size: Int64 = 0
         
-        // Parse time
         if let timeMatch = line.range(of: #"time=(\d+):(\d+):([\d.]+)"#, options: .regularExpression) {
             let timeStr = String(line[timeMatch])
             let components = timeStr.replacingOccurrences(of: "time=", with: "").split(separator: ":")
@@ -122,7 +118,6 @@ class FFmpegSession {
             }
         }
         
-        // Parse bitrate
         if let bitrateMatch = line.range(of: #"bitrate=\s*([\d.]+)kbits/s"#, options: .regularExpression) {
             let bitrateStr = String(line[bitrateMatch])
             if let value = Double(bitrateStr.replacingOccurrences(of: "bitrate=", with: "")
@@ -132,7 +127,6 @@ class FFmpegSession {
             }
         }
         
-        // Parse speed
         if let speedMatch = line.range(of: #"speed=\s*([\d.]+)x"#, options: .regularExpression) {
             let speedStr = String(line[speedMatch])
             if let value = Double(speedStr.replacingOccurrences(of: "speed=", with: "")
@@ -142,7 +136,6 @@ class FFmpegSession {
             }
         }
         
-        // Parse frame
         if let frameMatch = line.range(of: #"frame=\s*(\d+)"#, options: .regularExpression) {
             let frameStr = String(line[frameMatch])
             if let value = Int(frameStr.replacingOccurrences(of: "frame=", with: "")
@@ -151,7 +144,6 @@ class FFmpegSession {
             }
         }
         
-        // Parse fps
         if let fpsMatch = line.range(of: #"fps=\s*([\d.]+)"#, options: .regularExpression) {
             let fpsStr = String(line[fpsMatch])
             if let value = Double(fpsStr.replacingOccurrences(of: "fps=", with: "")
@@ -160,7 +152,6 @@ class FFmpegSession {
             }
         }
         
-        // Parse size
         if let sizeMatch = line.range(of: #"size=\s*(\d+)kB"#, options: .regularExpression) {
             let sizeStr = String(line[sizeMatch])
             if let value = Int64(sizeStr.replacingOccurrences(of: "size=", with: "")

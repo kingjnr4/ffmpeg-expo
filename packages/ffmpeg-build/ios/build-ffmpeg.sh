@@ -1,15 +1,11 @@
 #!/bin/bash
 set -e
 
-# FFmpeg iOS Build Script
-# Builds static libraries and creates XCFramework for arm64 (device) and x86_64/arm64 (simulator)
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FFMPEG_VERSION="${FFMPEG_VERSION:-6.1.1}"
 IOS_MIN_VERSION="${IOS_MIN_VERSION:-16.4}"
 OUTPUT_DIR="${OUTPUT_DIR:-$SCRIPT_DIR/../../../output/ios}"
 
-# Xcode detection
 if ! command -v xcrun &> /dev/null; then
     echo "ERROR: Xcode command line tools not found"
     echo "Install with: xcode-select --install"
@@ -27,7 +23,6 @@ declare -a ARCH_CONFIGS=(
     "iphonesimulator|x86_64|x86_64-apple-darwin|-mios-simulator-version-min=$IOS_MIN_VERSION"
 )
 
-# Common FFmpeg configure flags
 COMMON_FLAGS="
     --enable-static
     --disable-shared
@@ -54,7 +49,6 @@ COMMON_FLAGS="
     --disable-outdev=audiotoolbox
 "
 
-# Enabled components for "most used codecs"
 CODEC_FLAGS="
     --enable-decoder=aac,aac_latm,ac3,h264,hevc,mp3,mpeg4,vorbis,opus,flac,pcm_*,vp8,vp9,av1
     --enable-encoder=aac,mpeg4,pcm_*
@@ -88,11 +82,9 @@ build_ffmpeg() {
     # to prevent mixing architectures (arm64 vs x86_64)
     make distclean 2>/dev/null || true
     
-    # Extra flags for bitcode (disabled - FFmpeg doesn't support it well)
     local EXTRA_CFLAGS="-arch $ARCH -isysroot $SDK_PATH $DEPLOYMENT_FLAG -O2 -ffunction-sections -fdata-sections"
     local EXTRA_LDFLAGS="-arch $ARCH -isysroot $SDK_PATH $DEPLOYMENT_FLAG -Wl,-dead_strip"
     
-    # Configure
     ./configure \
         --prefix="$PREFIX" \
         --target-os=darwin \
@@ -105,10 +97,8 @@ build_ffmpeg() {
         $COMMON_FLAGS \
         $CODEC_FLAGS
     
-    # Build
     make -j$(sysctl -n hw.ncpu)
     
-    # Install
     make install
     
     echo "Built $SDK-$ARCH successfully"
@@ -136,11 +126,8 @@ create_xcframework() {
     local XCFRAMEWORK_DIR="$OUTPUT_DIR/FFmpeg.xcframework"
     rm -rf "$XCFRAMEWORK_DIR"
     
-    # Libraries to include
     local LIBS=("libavcodec" "libavformat" "libavutil" "libswresample" "libswscale")
     
-    # First, create combined static libraries per platform
-    # Device (arm64)
     local DEVICE_DIR="$OUTPUT_DIR/combined/iphoneos"
     mkdir -p "$DEVICE_DIR"
     
@@ -151,14 +138,11 @@ create_xcframework() {
         "$OUTPUT_DIR/build/iphoneos-arm64/lib/libswresample.a" \
         "$OUTPUT_DIR/build/iphoneos-arm64/lib/libswscale.a"
     
-    # Copy headers
     cp -R "$OUTPUT_DIR/build/iphoneos-arm64/include" "$DEVICE_DIR/"
     
-    # Simulator (arm64 + x86_64 fat binary)
     local SIM_DIR="$OUTPUT_DIR/combined/iphonesimulator"
     mkdir -p "$SIM_DIR"
     
-    # Create fat libraries for simulator
     for lib in "${LIBS[@]}"; do
         lipo -create \
             "$OUTPUT_DIR/build/iphonesimulator-arm64/lib/${lib}.a" \
@@ -178,10 +162,8 @@ create_xcframework() {
         "$OUTPUT_DIR/build/iphonesimulator-fat/lib/libswresample.a" \
         "$OUTPUT_DIR/build/iphonesimulator-fat/lib/libswscale.a"
     
-    # Copy headers
     cp -R "$OUTPUT_DIR/build/iphonesimulator-arm64/include" "$SIM_DIR/"
     
-    # Create XCFramework
     xcodebuild -create-xcframework \
         -library "$DEVICE_DIR/libffmpeg.a" \
         -headers "$DEVICE_DIR/include" \
@@ -192,10 +174,8 @@ create_xcframework() {
     echo "Created XCFramework at: $XCFRAMEWORK_DIR"
 }
 
-# Main build process
 mkdir -p "$OUTPUT_DIR/build"
 
-# Check if we're in FFmpeg source directory
 if [ ! -f "configure" ]; then
     FFMPEG_SRC="$SCRIPT_DIR/../../../ffmpeg-$FFMPEG_VERSION"
     if [ -d "$FFMPEG_SRC" ]; then
@@ -212,15 +192,12 @@ echo "Building FFmpeg $FFMPEG_VERSION for iOS"
 echo "Minimum iOS version: $IOS_MIN_VERSION"
 echo ""
 
-# Build for each architecture
 for CONFIG in "${ARCH_CONFIGS[@]}"; do
     build_ffmpeg "$CONFIG"
 done
 
-# Create XCFramework
 create_xcframework
 
-# Create summary
 echo ""
 echo "============================================"
 echo "Build Complete!"
@@ -229,7 +206,6 @@ echo ""
 echo "XCFramework: $OUTPUT_DIR/FFmpeg.xcframework"
 echo ""
 
-# Show sizes
 echo "Library sizes:"
 find "$OUTPUT_DIR/FFmpeg.xcframework" -name "*.a" -exec sh -c 'echo "  $(basename $(dirname $(dirname {}))): $(du -h {} | cut -f1)"' \;
 

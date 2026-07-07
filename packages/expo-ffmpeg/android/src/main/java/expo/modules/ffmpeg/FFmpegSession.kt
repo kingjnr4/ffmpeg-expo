@@ -34,7 +34,6 @@ class FFmpegSession(
             throw FFmpegCancelledException()
         }
 
-        // Set up native callback
         val callback = object : FFmpegCallback {
             override fun onProgress(time: Long, bitrate: Double, speed: Double, frame: Int, fps: Double, size: Long) {
                 if (!cancelled.get()) {
@@ -50,7 +49,6 @@ class FFmpegSession(
             }
         }
 
-        // Execute FFmpeg
         nativeSessionId = FFmpegBridge.createSession(id)
         
         try {

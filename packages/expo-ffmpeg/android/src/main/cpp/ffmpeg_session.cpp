@@ -11,12 +11,10 @@
 
 namespace ffmpeg {
 
-// Thread-local session for callbacks
 extern thread_local FFmpegSession* currentSession;
 
 int executeCommand(const std::vector<char*>& argv);
 
-// Progress parsing from FFmpeg stderr output
 class ProgressParser {
 public:
     void parseLine(const std::string& line, FFmpegSession* session) {
@@ -35,7 +33,6 @@ public:
         double fps = 0;
         int64_t size = 0;
         
-        // Parse time
         std::regex timeRegex("time=([0-9]+):([0-9]+):([0-9.]+)");
         std::smatch timeMatch;
         if (std::regex_search(line, timeMatch, timeRegex)) {
@@ -45,42 +42,36 @@ public:
             time = static_cast<int64_t>((hours * 3600 + minutes * 60 + seconds) * 1000);
         }
         
-        // Parse bitrate
         std::regex bitrateRegex("bitrate=\\s*([0-9.]+)kbits/s");
         std::smatch bitrateMatch;
         if (std::regex_search(line, bitrateMatch, bitrateRegex)) {
             bitrate = std::stod(bitrateMatch[1].str());
         }
         
-        // Parse speed
         std::regex speedRegex("speed=\\s*([0-9.]+)x");
         std::smatch speedMatch;
         if (std::regex_search(line, speedMatch, speedRegex)) {
             speed = std::stod(speedMatch[1].str());
         }
         
-        // Parse frame
         std::regex frameRegex("frame=\\s*([0-9]+)");
         std::smatch frameMatch;
         if (std::regex_search(line, frameMatch, frameRegex)) {
             frame = std::stoi(frameMatch[1].str());
         }
         
-        // Parse fps
         std::regex fpsRegex("fps=\\s*([0-9.]+)");
         std::smatch fpsMatch;
         if (std::regex_search(line, fpsMatch, fpsRegex)) {
             fps = std::stod(fpsMatch[1].str());
         }
         
-        // Parse size
         std::regex sizeRegex("size=\\s*([0-9]+)kB");
         std::smatch sizeMatch;
         if (std::regex_search(line, sizeMatch, sizeRegex)) {
             size = std::stoll(sizeMatch[1].str()) * 1024;
         }
         
-        // Notify if we have meaningful data
         if (time > 0 || frame > 0 || size > 0) {
             session->notifyProgress(time, bitrate, speed, frame, fps, size);
         }
@@ -98,17 +89,14 @@ int FFmpegSession::execute(JNIEnv* env, jobjectArray args, int logLevel, jobject
     setCallback(env, callback);
     currentSession = this;
     
-    // Set FFmpeg log level
     av_log_set_level(logLevel);
     
-    // Convert Java String array to C++ vector
     int argc = env->GetArrayLength(args);
     std::vector<std::string> argStrings;
     std::vector<char*> argv;
     argStrings.reserve(argc + 1);
     argv.reserve(argc + 1);
     
-    // First arg should be "ffmpeg"
     argStrings.push_back("ffmpeg");
     argv.push_back(const_cast<char*>(argStrings.back().c_str()));
     
@@ -125,13 +113,6 @@ int FFmpegSession::execute(JNIEnv* env, jobjectArray args, int logLevel, jobject
         LOGI("  arg[%zu]: %s", i, argv[i]);
     }
     
-    // For this implementation, we use the FFmpeg libraries directly
-    // The actual command execution requires either:
-    // 1. Patching FFmpeg to expose ffmpeg_main()
-    // 2. Implementing a command parser
-    //
-    // Below is a simplified transcoding implementation that handles common cases
-    
     int result = executeCommand(argv);
     
     currentSession = nullptr;
@@ -140,10 +121,8 @@ int FFmpegSession::execute(JNIEnv* env, jobjectArray args, int logLevel, jobject
     return result;
 }
 
-// Simplified FFmpeg command execution
 // This handles basic transcode commands: -i input -c:v codec -c:a codec output
 int executeCommand(const std::vector<char*>& argv) {
-    // Parse command line arguments
     const char* inputFile = nullptr;
     const char* outputFile = nullptr;
     const char* videoCodec = nullptr;
@@ -179,7 +158,6 @@ int executeCommand(const std::vector<char*>& argv) {
          videoCodec ? videoCodec : "copy",
          audioCodec ? audioCodec : "copy");
     
-    // Open input
     AVFormatContext* inputCtx = nullptr;
     int ret = avformat_open_input(&inputCtx, inputFile, nullptr, nullptr);
     if (ret < 0) {
@@ -196,7 +174,6 @@ int executeCommand(const std::vector<char*>& argv) {
         return ret;
     }
     
-    // Create output context
     AVFormatContext* outputCtx = nullptr;
     ret = avformat_alloc_output_context2(&outputCtx, nullptr, nullptr, outputFile);
     if (ret < 0 || !outputCtx) {
@@ -205,7 +182,6 @@ int executeCommand(const std::vector<char*>& argv) {
         return ret;
     }
     
-    // Copy streams
     for (unsigned int i = 0; i < inputCtx->nb_streams; i++) {
         AVStream* inStream = inputCtx->streams[i];
         AVStream* outStream = avformat_new_stream(outputCtx, nullptr);
@@ -228,7 +204,6 @@ int executeCommand(const std::vector<char*>& argv) {
         outStream->codecpar->codec_tag = 0;
     }
     
-    // Open output file
     if (!(outputCtx->oformat->flags & AVFMT_NOFILE)) {
         ret = avio_open(&outputCtx->pb, outputFile, AVIO_FLAG_WRITE);
         if (ret < 0) {
@@ -239,7 +214,6 @@ int executeCommand(const std::vector<char*>& argv) {
         }
     }
     
-    // Write header
     ret = avformat_write_header(outputCtx, nullptr);
     if (ret < 0) {
         LOGE("Failed to write header");
@@ -250,13 +224,11 @@ int executeCommand(const std::vector<char*>& argv) {
         return ret;
     }
     
-    // Copy packets
     AVPacket* pkt = av_packet_alloc();
     int64_t lastProgress = 0;
     ProgressParser progressParser;
     
     while (av_read_frame(inputCtx, pkt) >= 0) {
-        // Check for cancellation
         if (currentSession && currentSession->isCancelled()) {
             LOGI("Session cancelled");
             av_packet_free(&pkt);
@@ -270,7 +242,6 @@ int executeCommand(const std::vector<char*>& argv) {
         AVStream* inStream = inputCtx->streams[pkt->stream_index];
         AVStream* outStream = outputCtx->streams[pkt->stream_index];
         
-        // Rescale timestamps
         pkt->pts = av_rescale_q_rnd(pkt->pts, inStream->time_base, outStream->time_base,
                                     static_cast<AVRounding>(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
         pkt->dts = av_rescale_q_rnd(pkt->dts, inStream->time_base, outStream->time_base,
@@ -278,14 +249,12 @@ int executeCommand(const std::vector<char*>& argv) {
         pkt->duration = av_rescale_q(pkt->duration, inStream->time_base, outStream->time_base);
         pkt->pos = -1;
         
-        // Write packet
         ret = av_interleaved_write_frame(outputCtx, pkt);
         if (ret < 0) {
             LOGE("Error writing packet");
             break;
         }
         
-        // Report progress periodically
         if (currentSession && pkt->pts != AV_NOPTS_VALUE) {
             int64_t pts_ms = av_rescale_q(pkt->pts, outStream->time_base, {1, 1000});
             if (pts_ms - lastProgress >= 100) { // Every 100ms
@@ -302,10 +271,8 @@ int executeCommand(const std::vector<char*>& argv) {
         av_packet_unref(pkt);
     }
     
-    // Write trailer
     av_write_trailer(outputCtx);
     
-    // Cleanup
     av_packet_free(&pkt);
     avformat_close_input(&inputCtx);
     if (!(outputCtx->oformat->flags & AVFMT_NOFILE))
@@ -316,4 +283,4 @@ int executeCommand(const std::vector<char*>& argv) {
     return 0;
 }
 
-} // namespace ffmpeg
+}

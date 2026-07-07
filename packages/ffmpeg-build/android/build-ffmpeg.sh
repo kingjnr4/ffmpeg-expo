@@ -1,20 +1,15 @@
 #!/bin/bash
 set -e
 
-# FFmpeg Android Build Script
-# Builds shared libraries for arm64-v8a, armeabi-v7a, and x86_64
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FFMPEG_VERSION="${FFMPEG_VERSION:-6.1.1}"
 ANDROID_API="${ANDROID_API:-24}"
 OUTPUT_DIR="${OUTPUT_DIR:-$SCRIPT_DIR/../../../output/android}"
 
-# NDK path detection
 if [ -z "$ANDROID_NDK_HOME" ]; then
     if [ -d "/opt/android-ndk/ndk" ]; then
         ANDROID_NDK_HOME="/opt/android-ndk/ndk"
     elif [ -d "$HOME/Android/Sdk/ndk" ]; then
-        # Find latest NDK version
         ANDROID_NDK_HOME=$(find "$HOME/Android/Sdk/ndk" -maxdepth 1 -type d | sort -V | tail -1)
     else
         echo "ERROR: ANDROID_NDK_HOME not set and NDK not found"
@@ -24,7 +19,6 @@ fi
 
 TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
 if [ ! -d "$TOOLCHAIN" ]; then
-    # Try macOS path
     TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64"
 fi
 
@@ -45,7 +39,6 @@ declare -A ABI_CONFIGS=(
     ["x86_64"]="x86_64|x86_64-linux-android|x86-64"
 )
 
-# Common FFmpeg configure flags
 COMMON_FLAGS="
     --disable-static
     --enable-shared
@@ -69,7 +62,6 @@ COMMON_FLAGS="
     --enable-hardcoded-tables
 "
 
-# Enabled components for "most used codecs"
 # Note: Using native encoders only (LGPL). For libx264, you'd need GPL.
 CODEC_FLAGS="
     --enable-decoder=aac,aac_latm,ac3,h264,hevc,mp3,mpeg4,vorbis,opus,flac,pcm_*,vp8,vp9,gif,png,mjpeg
@@ -92,7 +84,6 @@ build_ffmpeg() {
     local CC="$TOOLCHAIN/bin/${TARGET}${ANDROID_API}-clang"
     local CXX="$TOOLCHAIN/bin/${TARGET}${ANDROID_API}-clang++"
     
-    # Special handling for armeabi-v7a
     if [ "$ABI" == "armeabi-v7a" ]; then
         CC="$TOOLCHAIN/bin/armv7a-linux-androideabi${ANDROID_API}-clang"
         CXX="$TOOLCHAIN/bin/armv7a-linux-androideabi${ANDROID_API}-clang++"
@@ -108,10 +99,8 @@ build_ffmpeg() {
     echo "============================================"
     echo ""
     
-    # Clean previous build thoroughly
     make distclean 2>/dev/null || make clean 2>/dev/null || true
     
-    # Configure
     ./configure \
         --prefix="$PREFIX" \
         --target-os=android \
@@ -130,22 +119,17 @@ build_ffmpeg() {
         $COMMON_FLAGS \
         $CODEC_FLAGS
     
-    # Build
     make -j$(nproc)
     
-    # Install
     make install
     
-    # Strip binaries further
     "$TOOLCHAIN/bin/llvm-strip" --strip-unneeded "$PREFIX/lib/"*.so 2>/dev/null || true
     
     echo "Built $ABI successfully"
 }
 
-# Main build process
 mkdir -p "$OUTPUT_DIR"
 
-# Check if we're in FFmpeg source directory
 if [ ! -f "configure" ]; then
     if [ -d "/src/ffmpeg" ]; then
         cd /src/ffmpeg
@@ -156,12 +140,10 @@ if [ ! -f "configure" ]; then
     fi
 fi
 
-# Build for each ABI in a defined order (arm64 first as it's most common)
 for ABI in arm64-v8a armeabi-v7a x86_64; do
     build_ffmpeg "$ABI"
 done
 
-# Create summary
 echo ""
 echo "============================================"
 echo "Build Complete!"
@@ -173,7 +155,6 @@ for ABI in "${!ABI_CONFIGS[@]}"; do
     ls -la "$OUTPUT_DIR/$ABI/lib/"*.so 2>/dev/null | awk '{print "    " $NF ": " $5 " bytes"}'
 done
 
-# Calculate total size
 TOTAL_SIZE=$(find "$OUTPUT_DIR" -name "*.so" -exec stat -f%z {} + 2>/dev/null | awk '{sum+=$1} END {print sum}' || \
              find "$OUTPUT_DIR" -name "*.so" -exec stat -c%s {} + 2>/dev/null | awk '{sum+=$1} END {print sum}')
 echo ""

@@ -1,5 +1,3 @@
-// Type definitions for ffmpeg-expo
-
 /**
  * Result returned after FFmpeg command execution
  */

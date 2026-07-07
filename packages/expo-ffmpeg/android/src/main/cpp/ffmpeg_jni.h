@@ -19,10 +19,8 @@ extern "C" {
 
 namespace ffmpeg {
 
-// Forward declarations
 class FFmpegSession;
 
-// Session manager singleton
 class SessionManager {
 public:
     static SessionManager& getInstance();
@@ -38,7 +36,6 @@ private:
     std::atomic<long> nextHandle_{1};
 };
 
-// FFmpeg execution session
 class FFmpegSession {
 public:
     FFmpegSession(const std::string& sessionId);
@@ -50,7 +47,6 @@ public:
     
     const std::string& getSessionId() const { return sessionId_; }
     
-    // Callback handling
     void setCallback(JNIEnv* env, jobject callback);
     void clearCallback(JNIEnv* env);
     void notifyProgress(int64_t time, double bitrate, double speed, int frame, double fps, int64_t size);
@@ -60,7 +56,6 @@ private:
     std::string sessionId_;
     std::atomic<bool> cancelled_{false};
     
-    // JNI callback state
     JavaVM* jvm_ = nullptr;
     jobject callbackRef_ = nullptr;
     jmethodID onProgressMethod_ = nullptr;
@@ -69,6 +64,6 @@ private:
     std::mutex callbackMutex_;
 };
 
-} // namespace ffmpeg
+}
 
-#endif // FFMPEG_JNI_H
+#endif
