@@ -8,7 +8,7 @@ Use this package for basic on-device remux/copy operations, progress updates, lo
 
 This project is not stable for production use yet. It is mostly a hobby project while the native implementation, packaging, and binary distribution are still being worked out.
 
-Use `ffmpeg-expo@0.0.3` or newer. Versions before `0.0.3` are not expected to work.
+Use `ffmpeg-expo@0.1.0` or newer. Versions before `0.1.0` are not expected to work.
 
 ## Features
 
