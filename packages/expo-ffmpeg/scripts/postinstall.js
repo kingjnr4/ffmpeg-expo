@@ -129,7 +129,7 @@ async function downloadPlatform(platform) {
   const isIOS = platform === 'ios';
   const ext = isIOS ? 'zip' : 'tar.gz';
   const url = `${BASE_URL}/ffmpeg-${platform}.${ext}`;
-  const tempFile = path.join(PACKAGE_DIR, `temp-${platform}.${ext}`);
+  const tempFile = path.join(PACKAGE_DIR, `temp-${platform}-${process.pid}.${ext}`);
   const destDir = isIOS ? IOS_DIR : ANDROID_DIR;
 
   console.log(`[${platform}] Downloading FFmpeg binaries...`);
@@ -172,8 +172,8 @@ async function downloadAndroidHeaders() {
   }
 
   const url = `https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2`;
-  const tempFile = path.join(PACKAGE_DIR, `temp-ffmpeg-${FFMPEG_VERSION}.tar.bz2`);
-  const tempDir = path.join(PACKAGE_DIR, `temp-ffmpeg-${FFMPEG_VERSION}`);
+  const tempFile = path.join(PACKAGE_DIR, `temp-ffmpeg-${FFMPEG_VERSION}-${process.pid}.tar.bz2`);
+  const tempDir = path.join(PACKAGE_DIR, `temp-ffmpeg-${FFMPEG_VERSION}-${process.pid}`);
   const sourceDir = path.join(tempDir, `ffmpeg-${FFMPEG_VERSION}`);
 
   console.log('[android] Downloading FFmpeg headers...');

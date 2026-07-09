@@ -65,7 +65,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck example
-        working-directory: example
+        working-directory: examples/basic
         run: pnpm run typecheck
 
   android-build-check:
