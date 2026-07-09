@@ -50,6 +50,8 @@
   "files": [
     "build",
     "android",
+    "!android/include",
+    "!android/include/**",
     "!android/jniLibs",
     "!android/jniLibs/**",
     "!android/libs",

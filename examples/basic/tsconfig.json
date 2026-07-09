@@ -3,7 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "ffmpeg-expo": ["../packages/expo-ffmpeg/src"]
+      "ffmpeg-expo": ["../../packages/expo-ffmpeg/src"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]

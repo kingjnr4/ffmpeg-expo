@@ -30,12 +30,14 @@ yarn-error.log*
 .env.local
 .env.*.local
 
-# Native builds (in example)
-example/android/
-example/ios/
-example/.expo/
+# Native builds (in examples)
+examples/*/android/
+examples/*/ios/
+examples/*/.expo/
 
 # FFmpeg binaries (downloaded at install time)
+packages/expo-ffmpeg/android/include/
+packages/expo-ffmpeg/android/jniLibs/
 packages/expo-ffmpeg/android/libs/
 packages/expo-ffmpeg/ios/Frameworks/
 

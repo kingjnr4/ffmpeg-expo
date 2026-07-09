@@ -5,7 +5,7 @@ This repository uses `main` as the only permanent development branch. Normal wor
 ## Package Model
 
 - Public npm package: `ffmpeg-expo` in `packages/expo-ffmpeg`
-- Private example app: `example`
+- Private example app: `examples/basic`
 - Auxiliary FFmpeg binary builders: `packages/ffmpeg-build`
 
 Only `ffmpeg-expo` is published to npm. The example app and binary builder scripts are never published as npm packages.

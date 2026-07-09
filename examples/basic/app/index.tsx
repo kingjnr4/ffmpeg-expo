@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { File, Paths } from "expo-file-system";
-import { Video, ResizeMode } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { run, getVersion, FFmpegError } from "ffmpeg-expo";
 import type { FFmpegProgress, FFmpegSession } from "ffmpeg-expo";
 
@@ -53,7 +53,7 @@ export default function HomeScreen() {
     if (!permission.granted) {
       Alert.alert(
         "Permission required",
-        "Please grant access to your media library"
+        "Please grant access to your media library",
       );
       return;
     }
@@ -63,12 +63,19 @@ export default function HomeScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      const info = new File(uri).info();
+      const asset = result.assets[0];
+      const sourceFile = new File(asset.uri);
+      const cachedInputFile = new File(
+        Paths.cache,
+        `input_${Date.now()}${getFileExtension(asset.fileName ?? asset.uri)}`,
+      );
+      await sourceFile.copy(cachedInputFile);
+
+      const info = cachedInputFile.info();
 
       setState((prev) => ({
         ...prev,
-        inputUri: uri,
+        inputUri: cachedInputFile.uri,
         outputUri: null,
         inputSize: info.size || 0,
         outputSize: 0,
@@ -76,7 +83,8 @@ export default function HomeScreen() {
         progress: 0,
       }));
 
-      addLog(`Selected video: ${uri.split("/").pop()}`);
+      addLog(`Selected video: ${asset.uri.split("/").pop()}`);
+      addLog(`Copied input to cache: ${cachedInputFile.name}`);
       addLog(`Input size: ${formatBytes(info.size || 0)}`);
     }
   };
@@ -87,6 +95,7 @@ export default function HomeScreen() {
       return;
     }
 
+    // Generate output path
     const outputFileName = `remuxed_${Date.now()}.mp4`;
     const outputUri = new File(Paths.cache, outputFileName).uri;
 
@@ -105,15 +114,11 @@ export default function HomeScreen() {
       const startTime = Date.now();
 
       // Current native execution supports a basic input-to-output remux/copy path.
-      const args = [
-        "-i",
-        state.inputUri,
-        "-y",
-        outputUri,
-      ];
+      const args = ["-i", state.inputUri, "-y", outputUri];
 
       addLog(`Command: ffmpeg ${args.join(" ")}`);
 
+      // Run FFmpeg with progress tracking
       const session = run(args, {
         onProgress: (progress: FFmpegProgress) => {
           setState((prev) => ({
@@ -132,10 +137,12 @@ export default function HomeScreen() {
 
       sessionRef.current = session;
 
+      // Wait for completion
       const result = await session.result;
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
       if (result.returnCode === 0) {
+        // Get output file size
         const outputInfo = new File(outputUri).info();
         const outputSize = outputInfo.size || 0;
         setState((prev) => ({
@@ -189,7 +196,7 @@ export default function HomeScreen() {
       const version = getVersion();
       Alert.alert(
         "FFmpeg Version",
-        `${version.version}\n\nMajor: ${version.major}\nMinor: ${version.minor}\nPatch: ${version.patch}`
+        `${version.version}\n\nMajor: ${version.major}\nMinor: ${version.minor}\nPatch: ${version.patch}`,
       );
       addLog(`FFmpeg version: ${version.version}`);
     } catch (error) {
@@ -199,6 +206,7 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Video Remux Demo</Text>
         <TouchableOpacity style={styles.versionButton} onPress={showVersion}>
@@ -206,6 +214,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Video Selection */}
       <View style={styles.section}>
         <TouchableOpacity
           style={[styles.button, styles.primaryButton]}
@@ -231,33 +240,25 @@ export default function HomeScreen() {
         )}
       </View>
 
+      {/* Video Preview */}
       {(state.inputUri || state.outputUri) && (
         <View style={styles.previewSection}>
           {state.inputUri && (
             <View style={styles.videoContainer}>
               <Text style={styles.label}>Input</Text>
-              <Video
-                source={{ uri: state.inputUri }}
-                style={styles.video}
-                useNativeControls
-                resizeMode={ResizeMode.CONTAIN}
-              />
+              <VideoPreview uri={state.inputUri} />
             </View>
           )}
           {state.outputUri && (
             <View style={styles.videoContainer}>
               <Text style={styles.label}>Output</Text>
-              <Video
-                source={{ uri: state.outputUri }}
-                style={styles.video}
-                useNativeControls
-                resizeMode={ResizeMode.CONTAIN}
-              />
+              <VideoPreview uri={state.outputUri} />
             </View>
           )}
         </View>
       )}
 
+      {/* Processing Controls */}
       {state.inputUri && !state.isProcessing && (
         <View style={styles.section}>
           <TouchableOpacity
@@ -269,6 +270,7 @@ export default function HomeScreen() {
         </View>
       )}
 
+      {/* Progress */}
       {state.isProcessing && (
         <View style={styles.section}>
           <View style={styles.progressContainer}>
@@ -290,6 +292,7 @@ export default function HomeScreen() {
         </View>
       )}
 
+      {/* Logs */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Logs</Text>
         <View style={styles.logContainer}>
@@ -312,12 +315,31 @@ export default function HomeScreen() {
   );
 }
 
+function VideoPreview({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri);
+
+  return (
+    <VideoView
+      player={player}
+      style={styles.video}
+      nativeControls
+      contentFit="contain"
+    />
+  );
+}
+
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+}
+
+function getFileExtension(fileNameOrUri: string): string {
+  const cleanName = fileNameOrUri.split("?")[0].split("#")[0];
+  const extension = cleanName.match(/\.[a-zA-Z0-9]+$/)?.[0];
+  return extension ?? ".mp4";
 }
 
 const styles = StyleSheet.create({

@@ -1,5 +1,5 @@
 {
-  "name": "expo-ffmpeg-example",
+  "name": "@example/basic",
   "version": "1.0.0",
   "private": true,
   "main": "expo-router/entry",
@@ -13,13 +13,13 @@
   },
   "dependencies": {
     "expo": "~56.0.12",
-    "expo-av": "~16.0.8",
     "expo-document-picker": "~56.0.4",
     "ffmpeg-expo": "workspace:*",
     "expo-file-system": "~56.0.8",
     "expo-image-picker": "~56.0.18",
     "expo-router": "~56.2.11",
     "expo-status-bar": "~56.0.4",
+    "expo-video": "~56.1.4",
     "react": "19.2.3",
     "react-native": "0.85.3",
     "react-native-reanimated": "4.3.1",
@@ -36,7 +36,7 @@
     "doctor": {
       "reactNativeDirectoryCheck": {
         "exclude": [
-          "expo-av",
+          "expo-video",
           "expo-modules-jsi",
           "ffmpeg-expo"
         ]
