@@ -3,10 +3,6 @@ name: FFmpeg Binaries
 on:
   workflow_dispatch:
     inputs:
-      ffmpeg_version:
-        description: FFmpeg source version to build
-        required: true
-        default: 6.1.1
       binary_release_tag:
         description: GitHub Release tag for these binary assets, for example ffmpeg-6.1.1-r1
         required: true
@@ -22,7 +18,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  FFMPEG_VERSION: ${{ inputs.ffmpeg_version }}
+  FFMPEG_VERSION: 6.1.1
+  FFMPEG_SHA256: 5e3133939a61ef64ac9b47ffd29a5ea6e337a4023ef0ad972094b4da844e3a20
   ANDROID_API: 24
   IOS_MIN_VERSION: '16.4'
 
@@ -58,6 +55,7 @@ jobs:
       - name: Download FFmpeg source
         run: |
           curl -fsSLO "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
+          echo "${FFMPEG_SHA256}  ffmpeg-${FFMPEG_VERSION}.tar.bz2" | sha256sum --check
           tar xjf "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
           rm "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
 
@@ -76,6 +74,7 @@ jobs:
           for arch in arm64-v8a armeabi-v7a x86_64; do
             mkdir -p "jniLibs/${arch}"
             cp output/android/${arch}/lib/*.so "jniLibs/${arch}/"
+            cp output/android/${arch}/lib/libexpo_ffmpeg.a "jniLibs/${arch}/"
           done
           tar -czvf ffmpeg-android.tar.gz -C jniLibs .
           sha256sum ffmpeg-android.tar.gz > android-checksums.txt
@@ -107,6 +106,7 @@ jobs:
       - name: Download FFmpeg source
         run: |
           curl -fsSLO "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
+          echo "${FFMPEG_SHA256}  ffmpeg-${FFMPEG_VERSION}.tar.bz2" | shasum -a 256 --check
           tar xjf "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
           rm "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
 

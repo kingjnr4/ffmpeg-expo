@@ -2,7 +2,7 @@
 
 Native FFmpeg support for Expo apps.
 
-Use this package for basic on-device remux/copy operations, progress updates, logs, cancellation, and FFmpeg version information. Advanced transcoding recipes such as CRF/preset compression, MP3 encoding, H.265 encoding, VP9 encoding, subtitles, filters, and multi-input mapping are not supported by the default package.
+Use this package for on-device FFmpeg command execution, progress updates, logs, cancellation, and FFmpeg version information. Commands use upstream FFmpeg argument handling; available codecs, filters, formats, and protocols depend on the installed binary profile.
 
 ## Status
 
@@ -13,7 +13,7 @@ Use `ffmpeg-expo@0.0.3` or newer. Versions before `0.0.3` are not expected to wo
 ## Features
 
 - Android and iOS native FFmpeg binaries
-- Basic remux/copy command support
+- Upstream FFmpeg command parsing and execution
 - Progress and log callbacks
 - Session cancellation
 - Expo config plugin
@@ -53,6 +53,46 @@ npx expo install ffmpeg-expo
 
 The package downloads prebuilt FFmpeg binaries during install.
 
+### Preview And Custom Binaries
+
+By default, postinstall downloads `ffmpeg-android.tar.gz` and, on macOS, `ffmpeg-ios.zip` from the GitHub release configured in `package.json`. The following environment variables override that default:
+
+| Variable | Purpose |
+| --- | --- |
+| `EXPO_FFMPEG_BINARY_BASE_URL` | Base URL containing both archives. |
+| `EXPO_FFMPEG_ANDROID_ARCHIVE_URL` | Complete Android archive URL; takes precedence over the base URL. |
+| `EXPO_FFMPEG_IOS_ARCHIVE_URL` | Complete iOS archive URL; takes precedence over the base URL. |
+| `EXPO_FFMPEG_ANDROID_ARCHIVE` | Local Android archive path; takes precedence over URL settings. Relative paths resolve from the directory where npm was invoked. |
+| `EXPO_FFMPEG_IOS_ARCHIVE` | Local iOS archive path; takes precedence over URL settings. Relative paths resolve from the directory where npm was invoked. |
+| `EXPO_FFMPEG_ANDROID_SHA256` | Expected Android archive SHA-256. When set, extraction only occurs after a match. |
+| `EXPO_FFMPEG_IOS_SHA256` | Expected iOS archive SHA-256. When set, extraction only occurs after a match. |
+
+Install a [pkg.pr.new](https://pkg.pr.new/) preview while using binary archives from a preview host:
+
+```bash
+EXPO_FFMPEG_BINARY_BASE_URL=https://preview.example.com/ffmpeg/my-commit \
+npm install https://pkg.pr.new/ffmpeg-expo@<commit>
+```
+
+The base URL must expose `/ffmpeg-android.tar.gz` and `/ffmpeg-ios.zip`. Use the per-platform URL variables when the archive URLs do not share that layout:
+
+```bash
+EXPO_FFMPEG_ANDROID_ARCHIVE_URL=https://preview.example.com/android.tar.gz \
+EXPO_FFMPEG_ANDROID_SHA256=<64-character-sha256> \
+npm install https://pkg.pr.new/ffmpeg-expo@<commit>
+```
+
+To test a packed npm tarball without publishing a release, provide local binary archives when installing it. On macOS, set both archives; on Linux, only Android is installed:
+
+```bash
+pnpm --dir packages/expo-ffmpeg pack
+EXPO_FFMPEG_ANDROID_ARCHIVE=/absolute/path/ffmpeg-android.tar.gz \
+EXPO_FFMPEG_IOS_ARCHIVE=/absolute/path/ffmpeg-ios.zip \
+npm install /absolute/path/ffmpeg-expo-0.1.0.tgz
+```
+
+Checksums are optional, but verification is required whenever the corresponding checksum variable is supplied. Temporary archive copies are removed after success or failure. Existing `SKIP_FFMPEG_DOWNLOAD=1` behavior still skips all setup.
+
 ## Expo Setup
 
 Add the config plugin, then run prebuild.
@@ -82,7 +122,7 @@ npx expo prebuild
 | --- | --- | --- |
 | `includeX86` | `false` | Including Android x86_64 emulator binaries in generated ABI filters. |
 | `ndkVersion` | unset | Optional Android NDK override. When unset, Expo/Android Gradle defaults are used. |
-| `binaryUrl` | unset | Reserved/experimental. The plugin only writes `EXPO_FFMPEG_BINARY_URL` into iOS Podfile properties; the postinstall downloader does not consume it. |
+| `binaryUrl` | unset | Reserved/experimental. The plugin writes `EXPO_FFMPEG_BINARY_URL` into iOS Podfile properties; use the postinstall environment variables above for binary installation. |
 
 `app.config.js` example:
 
@@ -103,7 +143,7 @@ export default {
 
 The config plugin does not change FFmpeg codec support. Custom codec builds require custom binaries.
 
-Do not rely on `binaryUrl` for self-hosted binary downloads yet. For now, use the default release assets or place custom binaries in the expected native directories manually.
+Do not rely on the plugin's `binaryUrl` for postinstall downloads; use `EXPO_FFMPEG_BINARY_BASE_URL` or the per-platform overrides above.
 
 ## Usage
 
@@ -202,7 +242,7 @@ Returns FFmpeg version information.
 
 ## Default Codec Support
 
-The default binaries are LGPL-only and are intended for basic remux/copy workflows. They do not include GPL or external codec libraries such as `libx264`, `libx265`, `libmp3lame`, `libvpx`, `libopus`, `libvorbis`, `libass`, or `libdav1d`.
+The default `min` binaries are LGPL-only. The command frontend supports normal FFmpeg arguments, but commands can only use components enabled in this profile. It does not include GPL or external codec libraries such as `libx264`, `libx265`, `libmp3lame`, `libvpx`, `libopus`, `libvorbis`, `libass`, or `libdav1d`.
 
 This means common recipes such as video compression with `libx264`, video to MP3, video to FLAC, H.264 to H.265, H.264 to VP9, subtitles, and multi-track mapping are not supported by default.
 

@@ -113,7 +113,7 @@ export default function HomeScreen() {
     try {
       const startTime = Date.now();
 
-      // Current native execution supports a basic input-to-output remux/copy path.
+      // Stream copy uses the same upstream argument parser as transcoding and filtering.
       const args = ["-i", state.inputUri, "-y", outputUri];
 
       addLog(`Command: ffmpeg ${args.join(" ")}`);

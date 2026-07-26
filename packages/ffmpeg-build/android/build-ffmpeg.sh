@@ -1,12 +1,19 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FFMPEG_VERSION="${FFMPEG_VERSION:-6.1.1}"
 ANDROID_API="${ANDROID_API:-24}"
 OUTPUT_DIR="${OUTPUT_DIR:-$SCRIPT_DIR/../../../output/android}"
+PATCH_FILE="$SCRIPT_DIR/../patches/ffmpeg-6.1.1-embed.patch"
+PUBLIC_HEADER="$SCRIPT_DIR/../include/expo_ffmpeg.h"
 
-if [ -z "$ANDROID_NDK_HOME" ]; then
+if [ "$FFMPEG_VERSION" != "6.1.1" ]; then
+    echo "ERROR: the embedding patch is pinned to FFmpeg 6.1.1"
+    exit 1
+fi
+
+if [ -z "${ANDROID_NDK_HOME:-}" ]; then
     if [ -d "/opt/android-ndk/ndk" ]; then
         ANDROID_NDK_HOME="/opt/android-ndk/ndk"
     elif [ -d "$HOME/Android/Sdk/ndk" ]; then
@@ -59,7 +66,15 @@ COMMON_FLAGS="
     --enable-pic
     --disable-debug
     --disable-symver
+    --disable-everything
+    --enable-avcodec
+    --enable-avfilter
+    --enable-avformat
+    --enable-avutil
+    --enable-swresample
+    --enable-swscale
     --enable-hardcoded-tables
+    --disable-avdevice
 "
 
 # Note: Using native encoders only (LGPL). For libx264, you'd need GPL.
@@ -70,7 +85,7 @@ CODEC_FLAGS="
     --enable-muxer=adts,flac,ipod,matroska,mov,mp3,mp4,mpegts,ogg,pcm_*,wav,webm,gif,image2
     --enable-parser=aac,aac_latm,ac3,h264,hevc,mpegaudio,mpeg4video,opus,vorbis
     --enable-protocol=file,pipe,crypto
-    --enable-filter=aformat,anull,atrim,concat,scale,trim,volume,fps,format,null,overlay,drawtext
+    --enable-filter=aformat,anull,atrim,concat,scale,trim,volume,fps,format,null,overlay
     --enable-bsf=aac_adtstoasc,h264_mp4toannexb,hevc_mp4toannexb
 "
 
@@ -119,9 +134,13 @@ build_ffmpeg() {
         $COMMON_FLAGS \
         $CODEC_FLAGS
     
-    make -j$(nproc)
+    make -j"$(nproc)" libexpo_ffmpeg.a
+    make -j"$(nproc)"
     
     make install
+    cp libexpo_ffmpeg.a "$PREFIX/lib/"
+    mkdir -p "$PREFIX/include"
+    cp "$PUBLIC_HEADER" "$PREFIX/include/"
     
     "$TOOLCHAIN/bin/llvm-strip" --strip-unneeded "$PREFIX/lib/"*.so 2>/dev/null || true
     
@@ -139,6 +158,11 @@ if [ ! -f "configure" ]; then
         exit 1
     fi
 fi
+
+if ! grep -q 'expo_ffmpeg_execute' fftools/ffmpeg.c; then
+    patch -p1 < "$PATCH_FILE"
+fi
+cp "$PUBLIC_HEADER" fftools/expo_ffmpeg.h
 
 for ABI in arm64-v8a armeabi-v7a x86_64; do
     build_ffmpeg "$ABI"

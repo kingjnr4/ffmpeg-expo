@@ -10,5 +10,7 @@
 #include <libavutil/mathematics.h>
 #include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
+#include <libavfilter/avfilter.h>
+#include <expo_ffmpeg.h>
 
 #endif

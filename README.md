@@ -2,7 +2,7 @@
 
 Native FFmpeg support for Expo apps.
 
-Use this package for basic on-device remux/copy operations, progress updates, logs, cancellation, and FFmpeg version information. Advanced transcoding recipes such as CRF/preset compression, MP3 encoding, H.265 encoding, VP9 encoding, subtitles, filters, and multi-input mapping are not supported by the default package.
+Use this package for on-device FFmpeg command execution, progress updates, logs, cancellation, and FFmpeg version information. Commands use upstream FFmpeg argument handling; available codecs, filters, formats, and protocols depend on the installed binary profile.
 
 ## Status
 
@@ -13,7 +13,7 @@ Use `ffmpeg-expo@0.1.0` or newer. Versions before `0.1.0` are not expected to wo
 ## Features
 
 - Android and iOS native FFmpeg binaries
-- Basic remux/copy command support
+- Upstream FFmpeg command parsing and execution
 - Progress and log callbacks
 - Session cancellation
 - Expo config plugin
@@ -202,7 +202,7 @@ Returns FFmpeg version information.
 
 ## Default Codec Support
 
-The default binaries are LGPL-only and are intended for basic remux/copy workflows. They do not include GPL or external codec libraries such as `libx264`, `libx265`, `libmp3lame`, `libvpx`, `libopus`, `libvorbis`, `libass`, or `libdav1d`.
+The default `min` binaries are LGPL-only. The command frontend supports normal FFmpeg arguments, but commands can only use components enabled in this profile. It does not include GPL or external codec libraries such as `libx264`, `libx265`, `libmp3lame`, `libvpx`, `libopus`, `libvorbis`, `libass`, or `libdav1d`.
 
 This means common recipes such as video compression with `libx264`, video to MP3, video to FLAC, H.264 to H.265, H.264 to VP9, subtitles, and multi-track mapping are not supported by default.
 

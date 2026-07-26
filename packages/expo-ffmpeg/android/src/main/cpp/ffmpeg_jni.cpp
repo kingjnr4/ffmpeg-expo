@@ -9,7 +9,7 @@
 
 namespace ffmpeg {
 
-thread_local FFmpegSession* currentSession = nullptr;
+FFmpegSession* currentSession = nullptr;
 
 static void ffmpeg_log_callback(void* ptr, int level, const char* fmt, va_list vl) {
     if (currentSession == nullptr) return;
@@ -24,7 +24,12 @@ static void ffmpeg_log_callback(void* ptr, int level, const char* fmt, va_list v
     
     if (strlen(line) > 0) {
         currentSession->notifyLog(level, line);
+        notifyProgressFromLine(line, currentSession);
     }
+}
+
+void installLogCallback() {
+    av_log_set_callback(ffmpeg_log_callback);
 }
 
 SessionManager& SessionManager::getInstance() {
