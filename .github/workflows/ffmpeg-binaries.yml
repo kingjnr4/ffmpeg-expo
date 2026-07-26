@@ -54,7 +54,8 @@ jobs:
 
       - name: Download FFmpeg source
         run: |
-          curl -fsSLO "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
+          curl --retry 5 --retry-all-errors --connect-timeout 30 -fsSLO \
+            "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
           echo "${FFMPEG_SHA256}  ffmpeg-${FFMPEG_VERSION}.tar.bz2" | sha256sum --check
           tar xjf "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
           rm "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
@@ -105,7 +106,8 @@ jobs:
 
       - name: Download FFmpeg source
         run: |
-          curl -fsSLO "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
+          curl --retry 5 --retry-all-errors --connect-timeout 30 -fsSLO \
+            "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
           echo "${FFMPEG_SHA256}  ffmpeg-${FFMPEG_VERSION}.tar.bz2" | shasum -a 256 --check
           tar xjf "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
           rm "ffmpeg-${FFMPEG_VERSION}.tar.bz2"
