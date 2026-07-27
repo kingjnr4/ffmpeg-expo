@@ -71,4 +71,17 @@ ParsedProgress parseProgressLine(const char* line) {
     return progress;
 }
 
+void notifyProgressFromLine(const char* line, FFmpegSession* session) {
+    const ParsedProgress progress = parseProgressLine(line);
+    if (!progress.valid) return;
+
+    session->notifyProgress(
+        progress.time_ms,
+        progress.bitrate,
+        progress.speed,
+        progress.frame,
+        progress.fps,
+        progress.size_bytes);
+}
+
 }

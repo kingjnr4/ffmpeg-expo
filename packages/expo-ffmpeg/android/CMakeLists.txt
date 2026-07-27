@@ -23,6 +23,15 @@ set_target_properties(swresample PROPERTIES IMPORTED_LOCATION ${FFMPEG_LIB_DIR}/
 add_library(swscale SHARED IMPORTED)
 set_target_properties(swscale PROPERTIES IMPORTED_LOCATION ${FFMPEG_LIB_DIR}/libswscale.so)
 
+add_library(avfilter SHARED IMPORTED)
+set_target_properties(avfilter PROPERTIES IMPORTED_LOCATION ${FFMPEG_LIB_DIR}/libavfilter.so)
+
+add_library(expo-ffmpeg-cli STATIC IMPORTED)
+set_target_properties(expo-ffmpeg-cli PROPERTIES
+    IMPORTED_LOCATION ${FFMPEG_LIB_DIR}/libexpo_ffmpeg.a
+    INTERFACE_LINK_LIBRARIES "avfilter;avformat;avcodec;swresample;swscale;avutil"
+)
+
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 add_library(ffmpeg-jni SHARED
@@ -33,8 +42,10 @@ add_library(ffmpeg-jni SHARED
 
 target_link_libraries(ffmpeg-jni
     ${log-lib}
+    expo-ffmpeg-cli
     avcodec
     avformat
+    avfilter
     avutil
     swresample
     swscale

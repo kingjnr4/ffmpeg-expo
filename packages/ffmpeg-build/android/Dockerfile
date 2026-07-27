@@ -40,8 +40,10 @@ RUN mkdir -p /src && cd /src && \
 
 WORKDIR /src/ffmpeg
 
-# Copy build scripts
-COPY build-ffmpeg.sh /build-ffmpeg.sh
+# Copy the pinned embedding patch, public API, and build script.
+COPY android/build-ffmpeg.sh /build-ffmpeg.sh
+COPY patches/ffmpeg-6.1.1-embed.patch /patches/ffmpeg-6.1.1-embed.patch
+COPY include/expo_ffmpeg.h /include/expo_ffmpeg.h
 
 RUN chmod +x /build-ffmpeg.sh
 

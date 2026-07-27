@@ -9,7 +9,7 @@
 
 namespace ffmpeg {
 
-thread_local FFmpegSession* currentSession = nullptr;
+FFmpegSession* currentSession = nullptr;
 
 static void ffmpeg_log_callback(void* ptr, int level, const char* fmt, va_list vl) {
     if (currentSession == nullptr) return;
@@ -24,7 +24,12 @@ static void ffmpeg_log_callback(void* ptr, int level, const char* fmt, va_list v
     
     if (strlen(line) > 0) {
         currentSession->notifyLog(level, line);
+        notifyProgressFromLine(line, currentSession);
     }
+}
+
+void installLogCallback() {
+    av_log_set_callback(ffmpeg_log_callback);
 }
 
 SessionManager& SessionManager::getInstance() {
@@ -71,7 +76,7 @@ void FFmpegSession::setCallback(JNIEnv* env, jobject callback) {
     
     jclass callbackClass = env->GetObjectClass(callback);
     onProgressMethod_ = env->GetMethodID(callbackClass, "onProgress", "(JDDIDJ)V");
-    onLogMethod_ = env->GetMethodID(callbackClass, "onLog", "(ILjava/lang/String;)V");
+    onLogMethod_ = env->GetMethodID(callbackClass, "onLog", "(I[B)V");
 }
 
 void FFmpegSession::clearCallback(JNIEnv* env) {
@@ -120,9 +125,17 @@ void FFmpegSession::notifyLog(int level, const char* message) {
         attached = true;
     }
     
-    jstring jmessage = env->NewStringUTF(message);
-    env->CallVoidMethod(callbackRef_, onLogMethod_, (jint)level, jmessage);
-    env->DeleteLocalRef(jmessage);
+    const auto messageLength = static_cast<jsize>(strlen(message));
+    jbyteArray jmessage = env->NewByteArray(messageLength);
+    if (jmessage != nullptr) {
+        env->SetByteArrayRegion(
+            jmessage,
+            0,
+            messageLength,
+            reinterpret_cast<const jbyte*>(message));
+        env->CallVoidMethod(callbackRef_, onLogMethod_, (jint)level, jmessage);
+        env->DeleteLocalRef(jmessage);
+    }
     
     if (attached) {
         jvm_->DetachCurrentThread();

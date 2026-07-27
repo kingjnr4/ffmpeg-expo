@@ -15,6 +15,7 @@ extern "C" {
 #include <libavutil/log.h>
 #include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
+#include "expo_ffmpeg.h"
 }
 
 namespace ffmpeg {
@@ -35,6 +36,9 @@ private:
     std::unordered_map<long, std::unique_ptr<FFmpegSession>> sessions_;
     std::atomic<long> nextHandle_{1};
 };
+
+extern FFmpegSession* currentSession;
+void notifyProgressFromLine(const char* line, FFmpegSession* session);
 
 class FFmpegSession {
 public:

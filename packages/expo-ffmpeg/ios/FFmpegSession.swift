@@ -21,6 +21,7 @@ enum FFmpegError: Error {
 }
 
 class FFmpegSession {
+    private static let executionLock = NSLock()
     let id: String
     private let args: [String]
     private let logLevel: Int32
@@ -46,7 +47,10 @@ class FFmpegSession {
     }
     
     func execute() throws -> FFmpegResult {
-        if cancelled {
+        Self.executionLock.lock()
+        defer { Self.executionLock.unlock() }
+
+        if isCancelled {
             throw FFmpegError.cancelled
         }
         
@@ -72,14 +76,14 @@ class FFmpegSession {
         }
         
         let returnCode = FFmpegBridge.execute(args: args, logLevel: logLevel) { [weak self] in
-            return self?.cancelled ?? true
+            return self?.isCancelled ?? true
         }
         
         lock.lock()
         let output = outputBuffer
         lock.unlock()
         
-        if cancelled {
+        if isCancelled {
             throw FFmpegError.cancelled
         }
         
@@ -90,6 +94,12 @@ class FFmpegSession {
         lock.lock()
         cancelled = true
         lock.unlock()
+    }
+
+    private var isCancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
     }
     
     private func parseProgress(from line: String) -> FFmpegProgress? {

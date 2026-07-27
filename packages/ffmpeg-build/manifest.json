@@ -1,0 +1,9 @@
+{
+  "ffmpegVersion": "6.1.1",
+  "patch": "patches/ffmpeg-6.1.1-embed.patch",
+  "licenseProfile": "LGPL-2.1-or-later",
+  "profile": "min",
+  "execution": "serialized",
+  "frontendArchive": "libexpo_ffmpeg.a",
+  "publicHeader": "include/expo_ffmpeg.h"
+}

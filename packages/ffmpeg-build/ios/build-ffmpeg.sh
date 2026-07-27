@@ -1,10 +1,17 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FFMPEG_VERSION="${FFMPEG_VERSION:-6.1.1}"
 IOS_MIN_VERSION="${IOS_MIN_VERSION:-16.4}"
 OUTPUT_DIR="${OUTPUT_DIR:-$SCRIPT_DIR/../../../output/ios}"
+PATCH_FILE="$SCRIPT_DIR/../patches/ffmpeg-6.1.1-embed.patch"
+PUBLIC_HEADER="$SCRIPT_DIR/../include/expo_ffmpeg.h"
+
+if [ "$FFMPEG_VERSION" != "6.1.1" ]; then
+    echo "ERROR: the embedding patch is pinned to FFmpeg 6.1.1"
+    exit 1
+fi
 
 if ! command -v xcrun &> /dev/null; then
     echo "ERROR: Xcode command line tools not found"
@@ -41,24 +48,28 @@ COMMON_FLAGS="
     --enable-pic
     --disable-debug
     --disable-symver
+    --disable-everything
+    --enable-avcodec
+    --enable-avfilter
+    --enable-avformat
+    --enable-avutil
+    --enable-swresample
+    --enable-swscale
     --enable-hardcoded-tables
-    --enable-videotoolbox
-    --enable-audiotoolbox
     --disable-avdevice
     --disable-indev=audiotoolbox
     --disable-outdev=audiotoolbox
 "
 
 CODEC_FLAGS="
-    --enable-decoder=aac,aac_latm,ac3,h264,hevc,mp3,mpeg4,vorbis,opus,flac,pcm_*,vp8,vp9,av1
-    --enable-encoder=aac,mpeg4,pcm_*
-    --enable-demuxer=aac,ac3,avi,flac,h264,hevc,matroska,mov,mp3,mp4,mpegts,ogg,pcm_*,wav,webm
-    --enable-muxer=adts,flac,ipod,matroska,mov,mp3,mp4,mpegts,ogg,pcm_*,wav,webm
+    --enable-decoder=aac,aac_latm,ac3,h264,hevc,mp3,mpeg4,vorbis,opus,flac,pcm_*,vp8,vp9,gif,png,mjpeg
+    --enable-encoder=aac,mpeg4,pcm_*,gif,png,mjpeg
+    --enable-demuxer=aac,ac3,avi,flac,h264,hevc,matroska,mov,mp3,mp4,mpegts,ogg,pcm_*,wav,webm,gif,image2
+    --enable-muxer=adts,flac,ipod,matroska,mov,mp3,mp4,mpegts,ogg,pcm_*,wav,webm,gif,image2
     --enable-parser=aac,aac_latm,ac3,h264,hevc,mpegaudio,mpeg4video,opus,vorbis
     --enable-protocol=file,pipe,crypto
-    --enable-filter=aformat,anull,atrim,concat,scale,trim,volume,fps,format,null
+    --enable-filter=aformat,anull,atrim,concat,scale,trim,volume,fps,format,null,overlay
     --enable-bsf=aac_adtstoasc,h264_mp4toannexb,hevc_mp4toannexb
-    --enable-hwaccel=h264_videotoolbox,hevc_videotoolbox
 "
 
 build_ffmpeg() {
@@ -97,9 +108,12 @@ build_ffmpeg() {
         $COMMON_FLAGS \
         $CODEC_FLAGS
     
-    make -j$(sysctl -n hw.ncpu)
+    make -j"$(sysctl -n hw.ncpu)" libexpo_ffmpeg.a
+    make -j"$(sysctl -n hw.ncpu)"
     
     make install
+    cp libexpo_ffmpeg.a "$PREFIX/lib/"
+    cp "$PUBLIC_HEADER" "$PREFIX/include/"
     
     echo "Built $SDK-$ARCH successfully"
 }
@@ -126,13 +140,15 @@ create_xcframework() {
     local XCFRAMEWORK_DIR="$OUTPUT_DIR/FFmpeg.xcframework"
     rm -rf "$XCFRAMEWORK_DIR"
     
-    local LIBS=("libavcodec" "libavformat" "libavutil" "libswresample" "libswscale")
+    local LIBS=("libexpo_ffmpeg" "libavcodec" "libavfilter" "libavformat" "libavutil" "libswresample" "libswscale")
     
     local DEVICE_DIR="$OUTPUT_DIR/combined/iphoneos"
     mkdir -p "$DEVICE_DIR"
     
     libtool -static -o "$DEVICE_DIR/libffmpeg.a" \
+        "$OUTPUT_DIR/build/iphoneos-arm64/lib/libexpo_ffmpeg.a" \
         "$OUTPUT_DIR/build/iphoneos-arm64/lib/libavcodec.a" \
+        "$OUTPUT_DIR/build/iphoneos-arm64/lib/libavfilter.a" \
         "$OUTPUT_DIR/build/iphoneos-arm64/lib/libavformat.a" \
         "$OUTPUT_DIR/build/iphoneos-arm64/lib/libavutil.a" \
         "$OUTPUT_DIR/build/iphoneos-arm64/lib/libswresample.a" \
@@ -156,7 +172,9 @@ create_xcframework() {
     done
     
     libtool -static -o "$SIM_DIR/libffmpeg.a" \
+        "$OUTPUT_DIR/build/iphonesimulator-fat/lib/libexpo_ffmpeg.a" \
         "$OUTPUT_DIR/build/iphonesimulator-fat/lib/libavcodec.a" \
+        "$OUTPUT_DIR/build/iphonesimulator-fat/lib/libavfilter.a" \
         "$OUTPUT_DIR/build/iphonesimulator-fat/lib/libavformat.a" \
         "$OUTPUT_DIR/build/iphonesimulator-fat/lib/libavutil.a" \
         "$OUTPUT_DIR/build/iphonesimulator-fat/lib/libswresample.a" \
@@ -187,6 +205,11 @@ if [ ! -f "configure" ]; then
         exit 1
     fi
 fi
+
+if ! grep -q 'expo_ffmpeg_execute' fftools/ffmpeg.c; then
+    patch -p1 < "$PATCH_FILE"
+fi
+cp "$PUBLIC_HEADER" fftools/expo_ffmpeg.h
 
 echo "Building FFmpeg $FFMPEG_VERSION for iOS"
 echo "Minimum iOS version: $IOS_MIN_VERSION"

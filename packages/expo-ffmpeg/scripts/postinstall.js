@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const crypto = require('crypto');
 const { execSync } = require('child_process');
 
 const packageJson = require('../package.json');
@@ -15,7 +16,7 @@ if (!BINARY_VERSION) {
   throw new Error('Missing ffmpegExpo.binaryReleaseTag in package.json');
 }
 
-const BASE_URL = `https://github.com/kingjnr4/ffmpeg-expo/releases/download/${BINARY_VERSION}`;
+const DEFAULT_BASE_URL = `https://github.com/kingjnr4/ffmpeg-expo/releases/download/${BINARY_VERSION}`;
 
 const PACKAGE_DIR = path.resolve(__dirname, '..');
 const ANDROID_DIR = path.join(PACKAGE_DIR, 'android', 'jniLibs');
@@ -72,6 +73,40 @@ function extract(archive, dest, type) {
   }
 }
 
+function archiveSettings(platform, ext) {
+  const prefix = `EXPO_FFMPEG_${platform.toUpperCase()}`;
+  const baseUrl = (process.env.EXPO_FFMPEG_BINARY_BASE_URL || DEFAULT_BASE_URL).replace(/\/+$/, '');
+  const localArchive = process.env[`${prefix}_ARCHIVE`];
+
+  return {
+    localArchive: localArchive
+      ? path.resolve(process.env.INIT_CWD || process.cwd(), localArchive)
+      : null,
+    url: process.env[`${prefix}_ARCHIVE_URL`] || `${baseUrl}/ffmpeg-${platform}.${ext}`,
+    checksum: process.env[`${prefix}_SHA256`],
+  };
+}
+
+async function verifyChecksum(archive, expected, platform) {
+  if (!expected) return;
+
+  const normalized = expected.trim().toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(normalized)) {
+    throw new Error(`${platform} SHA-256 must be exactly 64 hexadecimal characters`);
+  }
+
+  const hash = crypto.createHash('sha256');
+  for await (const chunk of fs.createReadStream(archive)) {
+    hash.update(chunk);
+  }
+  const actual = hash.digest('hex');
+  if (actual !== normalized) {
+    throw new Error(`${platform} SHA-256 mismatch: expected ${normalized}, received ${actual}`);
+  }
+
+  console.log(`[${platform}] SHA-256 verified`);
+}
+
 function copyHeaderFiles(sourceDir, destDir) {
   if (!fs.existsSync(sourceDir)) {
     return;
@@ -109,7 +144,12 @@ function writeAndroidGeneratedHeaders() {
 
 function binariesExist(platform) {
   if (platform === 'android') {
-    return fs.existsSync(path.join(ANDROID_DIR, 'arm64-v8a', 'libavcodec.so'));
+    const arm64Dir = path.join(ANDROID_DIR, 'arm64-v8a');
+    return (
+      fs.existsSync(path.join(arm64Dir, 'libavcodec.so')) &&
+      fs.existsSync(path.join(arm64Dir, 'libavfilter.so')) &&
+      fs.existsSync(path.join(arm64Dir, 'libexpo_ffmpeg.a'))
+    );
   } else if (platform === 'ios') {
     return fs.existsSync(path.join(IOS_DIR, 'FFmpeg.xcframework'));
   }
@@ -128,14 +168,19 @@ async function downloadPlatform(platform) {
 
   const isIOS = platform === 'ios';
   const ext = isIOS ? 'zip' : 'tar.gz';
-  const url = `${BASE_URL}/ffmpeg-${platform}.${ext}`;
+  const { localArchive, url, checksum } = archiveSettings(platform, ext);
   const tempFile = path.join(PACKAGE_DIR, `temp-${platform}-${process.pid}.${ext}`);
   const destDir = isIOS ? IOS_DIR : ANDROID_DIR;
 
-  console.log(`[${platform}] Downloading FFmpeg binaries...`);
+  console.log(`[${platform}] ${localArchive ? 'Loading local' : 'Downloading'} FFmpeg binaries...`);
 
   try {
-    await download(url, tempFile);
+    if (localArchive) {
+      fs.copyFileSync(localArchive, tempFile);
+    } else {
+      await download(url, tempFile);
+    }
+    await verifyChecksum(tempFile, checksum, platform);
     console.log(`[${platform}] Extracting...`);
 
     fs.mkdirSync(destDir, { recursive: true });
@@ -144,18 +189,14 @@ async function downloadPlatform(platform) {
       throw new Error('Extraction failed');
     }
 
-    fs.unlinkSync(tempFile);
     console.log(`[${platform}] Done`);
     return true;
   } catch (error) {
-    console.warn(`[${platform}] Failed to download binaries: ${error.message}`);
-    console.warn(`[${platform}] You may need to build binaries manually or download from:`);
-    console.warn(`[${platform}] ${url}`);
-
-    if (fs.existsSync(tempFile)) {
-      fs.unlinkSync(tempFile);
-    }
+    console.warn(`[${platform}] Failed to install binaries: ${error.message}`);
+    console.warn(`[${platform}] Binary source: ${localArchive || url}`);
     return false;
+  } finally {
+    fs.rmSync(tempFile, { force: true });
   }
 }
 
