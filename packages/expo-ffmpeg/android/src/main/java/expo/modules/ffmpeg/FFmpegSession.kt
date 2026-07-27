@@ -41,10 +41,11 @@ class FFmpegSession(
                 }
             }
 
-            override fun onLog(level: Int, message: String) {
+            override fun onLog(level: Int, message: ByteArray) {
                 if (!cancelled.get()) {
-                    outputBuffer.append(message)
-                    onLog(level, message)
+                    val text = message.toString(Charsets.UTF_8)
+                    outputBuffer.append(text)
+                    onLog(level, text)
                 }
             }
         }
@@ -79,5 +80,5 @@ class FFmpegSession(
 
 interface FFmpegCallback {
     fun onProgress(time: Long, bitrate: Double, speed: Double, frame: Int, fps: Double, size: Long)
-    fun onLog(level: Int, message: String)
+    fun onLog(level: Int, message: ByteArray)
 }

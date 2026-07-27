@@ -144,7 +144,12 @@ function writeAndroidGeneratedHeaders() {
 
 function binariesExist(platform) {
   if (platform === 'android') {
-    return fs.existsSync(path.join(ANDROID_DIR, 'arm64-v8a', 'libavcodec.so'));
+    const arm64Dir = path.join(ANDROID_DIR, 'arm64-v8a');
+    return (
+      fs.existsSync(path.join(arm64Dir, 'libavcodec.so')) &&
+      fs.existsSync(path.join(arm64Dir, 'libavfilter.so')) &&
+      fs.existsSync(path.join(arm64Dir, 'libexpo_ffmpeg.a'))
+    );
   } else if (platform === 'ios') {
     return fs.existsSync(path.join(IOS_DIR, 'FFmpeg.xcframework'));
   }
