@@ -10,6 +10,7 @@
     "build:plugin": "tsc -p plugin/tsconfig.json",
     "prepare:package": "pnpm run build && pnpm run build:plugin",
     "typecheck": "tsc --noEmit",
+    "test": "pnpm run build && node --test tests/*.test.js",
     "clean": "rm -rf build plugin/build",
     "pack:check": "pnpm run prepare:package && node ../../scripts/validate-package.js && publint .",
     "prepublishOnly": "pnpm run prepare:package",

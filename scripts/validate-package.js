@@ -34,6 +34,8 @@ const required = [
   'build/index.d.ts',
   'build/ExpoFFmpeg.js',
   'build/ExpoFFmpeg.d.ts',
+  'build/FilterGraph.js',
+  'build/FilterGraph.d.ts',
   'plugin/build/index.js',
   'app.plugin.js',
   'expo-module.config.json',

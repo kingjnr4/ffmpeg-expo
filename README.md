@@ -16,6 +16,7 @@ Use `ffmpeg-expo@0.1.0` or newer. Versions before `0.1.0` are not expected to wo
 - Upstream FFmpeg command parsing and execution
 - Progress and log callbacks
 - Session cancellation
+- Typed complex filtergraph builder
 - Expo config plugin
 - TypeScript definitions
 - LGPL-only FFmpeg build with no GPL codecs
@@ -124,6 +125,32 @@ async function remux(inputPath: string, outputPath: string) {
 }
 ```
 
+### Complex Filtergraphs
+
+`FilterGraphBuilder` serializes labels, chains, and filter options without adding shell quoting. Named option objects and positional option arrays are escaped for both FFmpeg filter-option and filtergraph parsing.
+
+```typescript
+import { execute, FilterGraphBuilder } from 'ffmpeg-expo';
+
+const graph = new FilterGraphBuilder().addChain({
+  inputs: '0:v',
+  filters: [
+    { name: 'scale', options: { w: 1280, h: -2 } },
+    { name: 'fps', options: [30] },
+  ],
+  outputs: 'video',
+});
+
+await execute([
+  '-i', inputPath,
+  ...graph.buildArgs(),
+  '-map', '[video]',
+  '-y', outputPath,
+]);
+```
+
+Use `addChain` for escaped, structured filterchains. `addRawChain` accepts a complete filterchain without validation or escaping for syntax that cannot be represented by the typed API.
+
 ### Progress And Logs
 
 ```typescript
@@ -186,6 +213,15 @@ run(['-i', inputPath, '-y', outputPath]);
 ### `execute(args, options?)`
 
 Runs a command and resolves with the result. Throws `FFmpegError` when FFmpeg returns a non-zero code.
+
+### `FilterGraphBuilder`
+
+Builds a complex filtergraph for use with `run` or `execute`.
+
+- `addChain({ inputs?, filters, outputs? })` adds a typed filterchain.
+- `addRawChain(fragment)` adds an unescaped filterchain.
+- `build()` returns the graph string.
+- `buildArgs()` returns `['-filter_complex', graph]`.
 
 ### `RunOptions`
 
