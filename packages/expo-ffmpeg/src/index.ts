@@ -5,6 +5,7 @@ export {
   FFmpegError,
   FFmpegCancelledError,
 } from './ExpoFFmpeg';
+export { FilterGraphBuilder } from './FilterGraph';
 
 export type {
   FFmpegResult,
@@ -15,3 +16,10 @@ export type {
   FFmpegVersion,
   RunOptions,
 } from './ExpoFFmpeg.types';
+
+export type {
+  FilterChainSpec,
+  FilterOptions,
+  FilterOptionValue,
+  FilterSpec,
+} from './FilterGraph';
