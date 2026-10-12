@@ -1,5 +1,15 @@
 # ffmpeg-expo
 
+## 0.2.0
+
+### Minor Changes
+
+- [#19](https://github.com/kingjnr4/ffmpeg-expo/pull/19) [`9bbc9a1`](https://github.com/kingjnr4/ffmpeg-expo/commit/9bbc9a171f4ffdea9d237b8e069e2d312e7dfc06) Thanks [@kingjnr4](https://github.com/kingjnr4)! - Embed the upstream FFmpeg command frontend so `run` and `execute` support the arguments and workflows enabled by the installed binary profile, including transcoding, filters, stream mapping, and multiple inputs.
+
+  Add a shared LGPL `min` binary profile, serialized native execution, repeat-invocation cleanup, cooperative cancellation, and preview binary overrides for testing package builds before release.
+
+- [#21](https://github.com/kingjnr4/ffmpeg-expo/pull/21) [`0a8a341`](https://github.com/kingjnr4/ffmpeg-expo/commit/0a8a341aeb7bb0680662da68f4b2bfe1c6063b47) Thanks [@kingjnr4](https://github.com/kingjnr4)! - Add a typed complex filtergraph builder with FFmpeg-aware option escaping and an argv helper for `run` and `execute`.
+
 ## 0.1.0
 
 ### Minor Changes
